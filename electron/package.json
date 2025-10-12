@@ -1,0 +1,57 @@
+{
+  "name": "gymapp-shell",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build:electron": "electron-builder --win",
+    "build": "npm run build:electron"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.0",
+    "get-port": "^7.1.0",
+    "tree-kill": "^1.2.2",
+    "wait-on": "^7.2.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.6.0"
+  },
+  "build": {
+    "appId": "com.gymapp.kiosk",
+    "productName": "GymApp POS",
+    "asar": true,
+    "files": [
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/.bin",
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/tests",
+      "!**/electron"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "laravel",
+        "filter": [
+          "app/**",
+          "bootstrap/**",
+          "config/**",
+          "database/**",
+          "public/**",   
+          "resources/**",
+          "routes/**",
+          "storage/**",
+          "artisan",
+          ".env"
+        ]
+      }
+    ]
+  }
+}

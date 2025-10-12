@@ -1,0 +1,30 @@
+directories:
+  output: dist
+  buildResources: assets
+appId: com.gymapp.kiosk
+productName: GymApp POS
+asar: true
+files:
+  - filter:
+      - '!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}'
+      - '!**/node_modules/.bin'
+      - '!**/*.map'
+      - '!**/*.ts'
+      - '!**/*.tsx'
+      - '!**/tests'
+      - '!**/electron'
+extraResources:
+  - from: ../
+    to: laravel
+    filter:
+      - app/**
+      - bootstrap/**
+      - config/**
+      - database/**
+      - public/**
+      - resources/**
+      - routes/**
+      - storage/**
+      - artisan
+      - .env
+electronVersion: 30.5.1

@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class SalesItem extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'transaction_id',
+        'product_id',
+        'quantity',
+        'price_each',
+    ];
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function transaction()
+    {
+        return $this->belongsTo(SalesTransaction::class, 'transaction_id');
+    }
+}
