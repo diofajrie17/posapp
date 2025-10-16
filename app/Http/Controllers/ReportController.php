@@ -212,7 +212,10 @@ class ReportController extends Controller
         $netProfit = $totalIncome - $totalExpenses;
 
         return Inertia::render('Reports/Comprehensive', [
-            'filters' => compact('dateFrom', 'dateTo'),
+            'filters' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ],
             'sales' => [
                 'summary' => $salesSummary,
                 'by_date' => $salesByDate,
@@ -259,81 +262,116 @@ class ReportController extends Controller
 
             // Sales Transactions
             fputcsv($out, ['=== SALES TRANSACTIONS ===']);
-            fputcsv($out, ['Date', 'Transaction ID', 'Payment Type', 'Amount', 'Member']);
+            fputcsv($out, ['Description', 'Amount', 'Percentage']);
             
             $sales = SalesTransaction::with('member:id,full_name')
                 ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
-                ->orderBy('date_time')
                 ->get();
             
+            $totalSales = $sales->sum('total_amount');
+            
             foreach ($sales as $sale) {
+                $percentage = $totalSales > 0 ? ($sale->total_amount / $totalSales * 100) : 0;
+                $description = $sale->date_time->format('Y-m-d') . ' - ' . $sale->payment_type . ' - ' . ($sale->member ? $sale->member->full_name : 'Guest');
                 fputcsv($out, [
-                    $sale->date_time->format('Y-m-d'),
-                    $sale->id,
-                    $sale->payment_type,
-                    $sale->total_amount,
-                    $sale->member ? $sale->member->full_name : 'Guest'
+                    $description,
+                    number_format($sale->total_amount, 0, ',', '.'),
+                    number_format($percentage, 2, '.', '') . '%'
                 ]);
             }
             
+            fputcsv($out, ['Total Sales', number_format($totalSales, 0, ',', '.'), '100%']);
             fputcsv($out, []);
 
             // Expenses
             fputcsv($out, ['=== EXPENSES ===']);
-            fputcsv($out, ['Date', 'Description', 'Amount']);
+            fputcsv($out, ['Description', 'Amount', 'Percentage']);
             
             $expenses = Expense::whereBetween('date', [$dateFrom, $dateTo])
                 ->orderBy('date')
                 ->get();
             
+            $totalExpenses = $expenses->sum('amount');
+            
             foreach ($expenses as $expense) {
+                $percentage = $totalExpenses > 0 ? ($expense->amount / $totalExpenses * 100) : 0;
+                $dateFormatted = $expense->date instanceof \Carbon\Carbon ? $expense->date->format('Y-m-d') : $expense->date;
+                $description = $dateFormatted . ' - ' . $expense->description;
                 fputcsv($out, [
-                    $expense->date,
-                    $expense->description,
-                    $expense->amount
+                    $description,
+                    number_format($expense->amount, 0, ',', '.'),
+                    number_format($percentage, 2, '.', '') . '%'
                 ]);
             }
-
+            
+            if ($totalExpenses > 0) {
+                fputcsv($out, ['Total Expenses', number_format($totalExpenses, 0, ',', '.'), '100%']);
+            }
             fputcsv($out, []);
 
             // Ads
             fputcsv($out, ['=== ADVERTISING EXPENSES ===']);
-            fputcsv($out, ['Date', 'Type', 'Description', 'Vendor', 'Amount']);
+            fputcsv($out, ['Description', 'Amount', 'Percentage']);
             
             $ads = Ad::whereBetween('date', [$dateFrom, $dateTo])
                 ->orderBy('date')
                 ->get();
             
+            $totalAds = $ads->sum('amount');
+            
             foreach ($ads as $ad) {
+                $percentage = $totalAds > 0 ? ($ad->amount / $totalAds * 100) : 0;
+                $dateFormatted = $ad->date instanceof \Carbon\Carbon ? $ad->date->format('Y-m-d') : $ad->date;
+                $description = $dateFormatted . ' - ' . $ad->type . ' - ' . $ad->description . ' (' . ($ad->vendor ?? 'N/A') . ')';
                 fputcsv($out, [
-                    $ad->date,
-                    $ad->type,
-                    $ad->description,
-                    $ad->vendor,
-                    $ad->amount
+                    $description,
+                    number_format($ad->amount, 0, ',', '.'),
+                    number_format($percentage, 2, '.', '') . '%'
                 ]);
             }
-
+            
+            if ($totalAds > 0) {
+                fputcsv($out, ['Total Advertising', number_format($totalAds, 0, ',', '.'), '100%']);
+            }
             fputcsv($out, []);
 
             // Facilities
             fputcsv($out, ['=== FACILITY INCOME ===']);
-            fputcsv($out, ['Date', 'Type', 'Description', 'Customer', 'Duration', 'Amount']);
+            fputcsv($out, ['Description', 'Amount', 'Percentage']);
             
             $facilities = Facility::whereBetween('date', [$dateFrom, $dateTo])
                 ->orderBy('date')
                 ->get();
             
+            $totalFacilities = $facilities->sum('amount');
+            
             foreach ($facilities as $facility) {
+                $percentage = $totalFacilities > 0 ? ($facility->amount / $totalFacilities * 100) : 0;
+                $dateFormatted = $facility->date instanceof \Carbon\Carbon ? $facility->date->format('Y-m-d') : $facility->date;
+                $description = $dateFormatted . ' - ' . $facility->type . ' - ' . $facility->description . ' (' . ($facility->customer_name ?? 'N/A') . ')';
                 fputcsv($out, [
-                    $facility->date,
-                    $facility->type,
-                    $facility->description,
-                    $facility->customer_name,
-                    $facility->duration,
-                    $facility->amount
+                    $description,
+                    number_format($facility->amount, 0, ',', '.'),
+                    number_format($percentage, 2, '.', '') . '%'
                 ]);
             }
+            
+            if ($totalFacilities > 0) {
+                fputcsv($out, ['Total Facility Income', number_format($totalFacilities, 0, ',', '.'), '100%']);
+            }
+            fputcsv($out, []);
+            
+            // Summary
+            fputcsv($out, ['=== SUMMARY ===']);
+            fputcsv($out, ['Category', 'Amount', 'Percentage']);
+            
+            $grandTotal = $totalSales + $totalFacilities - $totalExpenses - $totalAds;
+            $totalIncome = $totalSales + $totalFacilities;
+            $totalOutcome = $totalExpenses + $totalAds;
+            
+            fputcsv($out, ['Total Income (Sales + Facilities)', number_format($totalIncome, 0, ',', '.'), '']);
+            fputcsv($out, ['Total Expenses (Operational + Ads)', number_format($totalOutcome, 0, ',', '.'), '']);
+            fputcsv($out, ['Net Profit/Loss', number_format($grandTotal, 0, ',', '.'), '']);
             
             fclose($out);
         }, 200, $headers);
