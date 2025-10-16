@@ -10,7 +10,7 @@
           <a
             :href="route('reports.daily.export', { date: localDate })"
             class="px-4 py-2 border border-gray-400 text-gray-700 rounded font-semibold text-sm hover:bg-gray-100 transition"
-          >Export CSV</a>
+          >📊 Export CSV</a>
           <button @click="print" class="px-4 py-2 bg-blue-600 text-white rounded font-semibold text-sm hover:bg-blue-700 transition">🖨 Print</button>
         </div>
       </div>

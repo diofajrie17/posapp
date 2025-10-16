@@ -1,50 +1,105 @@
 <template>
   <AppLayout title="Inventori">
-    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg p-6">
-      <!-- Header Section -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 class="text-3xl font-bold text-gray-800">Inventori</h1>
-        <div class="flex flex-wrap gap-3">
-          <Link href="/inventory/stock/opname" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition">Stock Opname</Link>
-          <Link href="/inventory/movements" class="px-4 py-2 border border-gray-400 text-gray-700 rounded-lg font-semibold text-sm hover:bg-gray-100 transition">Riwayat Mutasi</Link>
-        </div>
-      </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Page Header -->
+      <PageHeader
+        title="Inventori"
+        subtitle="Monitor stok produk dan kelola inventori"
+      >
+        <template #actions>
+          <Button
+            variant="secondary"
+            href="/inventory/movements"
+          >
+            📜 Riwayat Mutasi
+          </Button>
+          <Button
+            variant="primary"
+            href="/inventory/stock/opname"
+          >
+            📊 Stock Opname
+          </Button>
+        </template>
+      </PageHeader>
 
-      <!-- Table Section -->
-      <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-        <table class="min-w-full border-collapse">
-          <thead>
-            <tr class="bg-gray-100 text-gray-700">
-              <th class="px-4 py-3 text-left border-b border-gray-200">Produk</th>
-              <th class="px-4 py-3 text-left border-b border-gray-200">Stok</th>
-              <th class="px-4 py-3 text-left border-b border-gray-200">Unit</th>
+      <!-- Summary Card -->
+      <Card class="mb-6">
+        <div class="text-center">
+          <h3 class="text-sm font-medium text-gray-600 mb-1">Total Produk</h3>
+          <p class="text-3xl font-bold text-blue-600">{{ products.length }}</p>
+        </div>
+      </Card>
+
+      <!-- Stock List -->
+      <Card title="Daftar Stok Produk">
+        <DataTable v-if="products.length">
+          <template #header>
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Nama Produk
+              </th>
+              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Stok
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Unit
+              </th>
             </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="p in products"
-              :key="p.id"
-              class="hover:bg-gray-50 transition"
+          </template>
+          <tr v-for="p in products" :key="p.id" class="hover:bg-gray-50">
+            <td class="px-6 py-4 text-sm font-medium text-gray-900">
+              {{ p.name }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span 
+                class="inline-flex px-3 py-1 text-sm font-semibold rounded-full"
+                :class="getStockClass(p.stock)"
+              >
+                {{ p.stock }}
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ p.unit }}
+            </td>
+          </tr>
+        </DataTable>
+
+        <EmptyState
+          v-else
+          icon="📦"
+          message="Tidak ada data stok"
+          subtitle="Belum ada produk yang terdaftar dalam inventori"
+        >
+          <template #actions>
+            <Button
+              variant="primary"
+              href="/products/create"
             >
-              <td class="px-4 py-3 border-b border-gray-100">{{ p.name }}</td>
-              <td class="px-4 py-3 border-b border-gray-100">{{ p.stock }}</td>
-              <td class="px-4 py-3 border-b border-gray-100">{{ p.unit }}</td>
-            </tr>
-            <tr v-if="products.length === 0">
-              <td colspan="3" class="text-center p-6 text-gray-500">
-                Tidak ada data produk.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              Tambah Produk
+            </Button>
+          </template>
+        </EmptyState>
+      </Card>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/PageHeader.vue'
+import Card from '@/Components/Card.vue'
+import DataTable from '@/Components/DataTable.vue'
+import Button from '@/Components/Button.vue'
+import EmptyState from '@/Components/EmptyState.vue'
 
-defineProps({ products: Array })
+defineProps({ 
+  products: Array 
+})
+
+function getStockClass(stock) {
+  const numStock = Number(stock) || 0
+  if (numStock === 0) return 'bg-red-100 text-red-800'
+  if (numStock <= 10) return 'bg-yellow-100 text-yellow-800'
+  return 'bg-green-100 text-green-800'
+}
 </script>
