@@ -1,79 +1,92 @@
 <template>
   <AppLayout title="Daftar Pengeluaran">
-    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg p-6">
-      <!-- Header dan Tombol -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 class="text-3xl font-bold text-gray-800">Daftar Pengeluaran</h1>
-        <div class="flex flex-wrap gap-3">
-          <a
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <PageHeader title="Daftar Pengeluaran" subtitle="Kelola pengeluaran operasional">
+        <template #actions>
+          <Button
             :href="route('expenses.export')"
-            class="px-4 py-2 border border-gray-400 text-gray-700 rounded font-semibold text-sm hover:bg-gray-100 transition"
+            variant="secondary"
           >
-            📊 Export CSV
-          </a>
-          <Link href="/expenses/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition">+ Tambah Pengeluaran</Link>
-        </div>
-      </div>
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Export CSV
+          </Button>
+          <Button href="/expenses/create" variant="primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Tambah Pengeluaran
+          </Button>
+        </template>
+      </PageHeader>
 
-      <!-- Tabel Pengeluaran -->
-      <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-        <table class="min-w-full border-collapse">
-          <thead>
-            <tr class="bg-gray-100 text-gray-700">
-              <th class="px-4 py-3 text-left border-b border-gray-200">Deskripsi</th>
-              <th class="px-4 py-3 text-right border-b border-gray-200">Jumlah</th>
-              <th class="px-4 py-3 text-left border-b border-gray-200">Tanggal</th>
-              <th class="px-4 py-3 text-center border-b border-gray-200">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="expense in expenses"
-              :key="expense.id"
-              class="hover:bg-gray-50 transition"
-            >
-              <td class="px-4 py-3 border-b border-gray-100 font-medium">
-                {{ expense.description }}
-              </td>
-              <td class="px-4 py-3 border-b border-gray-100 text-right font-semibold text-gray-800">
-                {{ formatRupiah(expense.amount) }}
-              </td>
-              <td class="px-4 py-3 border-b border-gray-100 text-gray-600">
-                {{ formatDate(expense.date) }}
-              </td>
-              <td class="px-4 py-3 border-b border-gray-100 text-center flex gap-4 justify-center">
-                <Link
+      <Card>
+        <DataTable>
+          <template #header>
+            <th class="px-4 py-3 text-left font-semibold">Deskripsi</th>
+            <th class="px-4 py-3 text-right font-semibold">Jumlah</th>
+            <th class="px-4 py-3 text-left font-semibold">Tanggal</th>
+            <th class="px-4 py-3 text-center font-semibold">Aksi</th>
+          </template>
+
+          <tr v-if="expenses.length === 0">
+            <td colspan="4" class="p-0">
+              <EmptyState 
+                icon="💸" 
+                message="Belum ada pengeluaran" 
+                subtitle="Catat pengeluaran operasional Anda"
+              />
+            </td>
+          </tr>
+
+          <tr
+            v-for="expense in expenses"
+            :key="expense.id"
+            class="hover:bg-gray-50 transition-colors"
+          >
+            <td class="px-4 py-3 font-medium text-gray-800">
+              {{ expense.description }}
+            </td>
+            <td class="px-4 py-3 text-right font-semibold text-red-600">
+              {{ formatRupiah(expense.amount) }}
+            </td>
+            <td class="px-4 py-3 text-gray-600">
+              {{ formatDate(expense.date) }}
+            </td>
+            <td class="px-4 py-3 text-center">
+              <div class="flex gap-2 justify-center">
+                <Button
                   :href="route('expenses.edit', expense.id)"
-                  class="text-blue-600 hover:underline font-medium"
+                  variant="ghost"
+                  size="sm"
                 >
                   Edit
-                </Link>
+                </Button>
                 <button
                   @click="destroy(expense.id)"
-                  class="text-red-600 hover:underline font-medium"
+                  class="text-red-600 hover:text-red-800 text-sm font-medium"
                 >
                   Hapus
                 </button>
-              </td>
-            </tr>
-
-            <!-- Empty State -->
-            <tr v-if="expenses.length === 0">
-              <td colspan="4" class="text-center p-6 text-gray-500">
-                Belum ada data pengeluaran.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </div>
+            </td>
+          </tr>
+        </DataTable>
+      </Card>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { Link, router } from "@inertiajs/vue3";
+import { router } from "@inertiajs/vue3";
 import { route } from "ziggy-js";
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/PageHeader.vue'
+import Card from '@/Components/Card.vue'
+import DataTable from '@/Components/DataTable.vue'
+import Button from '@/Components/Button.vue'
+import EmptyState from '@/Components/EmptyState.vue'
 
 const props = defineProps({
   expenses: Array,

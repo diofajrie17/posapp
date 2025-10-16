@@ -1,67 +1,134 @@
 <template>
   <AppLayout title="Daftar Member">
-    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg p-6">
-      <!-- Header dan Tombol -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 class="text-3xl font-bold text-gray-800">Daftar Member</h1>
-        <div class="flex flex-wrap gap-3">
-          <Link href="/members/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition">+ Tambah Member</Link>
-        </div>
-      </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Page Header -->
+      <PageHeader
+        title="Daftar Member"
+        subtitle="Kelola data member dan informasi keanggotaan"
+      >
+        <template #actions>
+          <Button
+            variant="primary"
+            href="/members/create"
+          >
+            + Tambah Member
+          </Button>
+        </template>
+      </PageHeader>
 
-      <!-- Tabel Member -->
-      <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-        <table class="min-w-full border-collapse">
-          <thead>
-            <tr class="bg-gray-100 text-gray-700">
-              <th class="px-4 py-3 text-left border-b border-gray-200">Nama</th>
-              <th class="px-4 py-3 text-left border-b border-gray-200">Phone</th>
-              <th class="px-4 py-3 text-left border-b border-gray-200">Aksi</th>
+      <!-- Summary Card -->
+      <Card class="mb-6">
+        <div class="text-center">
+          <h3 class="text-sm font-medium text-gray-600 mb-1">Total Member</h3>
+          <p class="text-3xl font-bold text-blue-600">{{ members.length }}</p>
+        </div>
+      </Card>
+
+      <!-- Members List -->
+      <Card title="Daftar Member">
+        <DataTable v-if="members.length">
+          <template #header>
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Nama Lengkap
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                No. Telepon
+              </th>
+              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Aksi
+              </th>
             </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="member in members"
-              :key="member.id"
-              class="hover:bg-gray-50 transition"
-            >
-              <td class="px-4 py-3 border-b border-gray-100">{{ member.full_name }}</td>
-              <td class="px-4 py-3 border-b border-gray-100">{{ member.phone }}</td>
-              <td class="px-4 py-3 border-b border-gray-100 flex gap-4">
-                <Link
+          </template>
+          <tr v-for="member in members" :key="member.id" class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span class="text-blue-600 font-semibold text-sm">
+                    {{ getInitials(member.full_name) }}
+                  </span>
+                </div>
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ member.full_name }}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              {{ member.phone || '-' }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+              <div class="flex justify-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
                   :href="`/members/${member.id}/edit`"
-                  class="text-blue-600 hover:underline font-medium"
                 >
                   Edit
-                </Link>
-                <Link
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
                   :href="`/members/${member.id}`"
                   method="delete"
                   as="button"
-                  class="text-red-600 hover:underline font-medium"
-                  onclick="return confirm('Yakin ingin menghapus member ini?')"
+                  @click="confirmDelete(member)"
                 >
                   Hapus
-                </Link>
-              </td>
-            </tr>
-            <tr v-if="members.length === 0">
-              <td colspan="3" class="text-center p-6 text-gray-500">
-                Tidak ada data member.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                </Button>
+              </div>
+            </td>
+          </tr>
+        </DataTable>
+
+        <EmptyState
+          v-else
+          icon="👥"
+          message="Tidak ada data member"
+          subtitle="Belum ada member yang terdaftar"
+        >
+          <template #actions>
+            <Button
+              variant="primary"
+              href="/members/create"
+            >
+              + Tambah Member
+            </Button>
+          </template>
+        </EmptyState>
+      </Card>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/PageHeader.vue'
+import Card from '@/Components/Card.vue'
+import DataTable from '@/Components/DataTable.vue'
+import Button from '@/Components/Button.vue'
+import EmptyState from '@/Components/EmptyState.vue'
 
 defineProps({
   members: Array
 })
+
+function getInitials(name) {
+  if (!name) return '?'
+  const parts = name.trim().split(' ')
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+}
+
+function confirmDelete(member) {
+  if (confirm(`Yakin ingin menghapus member "${member.full_name}"?`)) {
+    router.delete(`/members/${member.id}`, {
+      preserveScroll: true,
+    })
+  }
+}
 </script>
