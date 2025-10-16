@@ -91,9 +91,9 @@
         </Link>
         
         <Link
-          href="/reports/daily-sales"
+          href="/reports/comprehensive"
           class="flex items-center px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
-          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('reports.daily') }"
+          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('reports.comprehensive') || route().current('reports.daily') }"
           @click="menuOpen = false"
         >
           <span class="text-sm font-medium">Laporan</span>
@@ -106,6 +106,24 @@
           @click="menuOpen = false"
         >
           <span class="text-sm font-medium">Pengeluaran</span>
+        </Link>
+
+        <Link
+          href="/ads"
+          class="flex items-center px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
+          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('ads.index') }"
+          @click="menuOpen = false"
+        >
+          <span class="text-sm font-medium">Iklan</span>
+        </Link>
+
+        <Link
+          href="/facilities"
+          class="flex items-center px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
+          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('facilities.index') }"
+          @click="menuOpen = false"
+        >
+          <span class="text-sm font-medium">Fasilitas</span>
         </Link>
         
         <Link

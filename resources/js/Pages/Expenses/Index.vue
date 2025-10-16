@@ -5,6 +5,12 @@
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 class="text-3xl font-bold text-gray-800">Daftar Pengeluaran</h1>
         <div class="flex flex-wrap gap-3">
+          <a
+            :href="route('expenses.export')"
+            class="px-4 py-2 border border-gray-400 text-gray-700 rounded font-semibold text-sm hover:bg-gray-100 transition"
+          >
+            📊 Export CSV
+          </a>
           <Link href="/expenses/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold text-sm hover:bg-blue-700 transition">+ Tambah Pengeluaran</Link>
         </div>
       </div>

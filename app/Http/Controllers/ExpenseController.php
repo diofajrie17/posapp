@@ -59,4 +59,58 @@ class ExpenseController extends Controller
         $expense->delete();
         return redirect()->route('expenses.index')->with('success', 'Expense berhasil dihapus');
     }
+
+    public function export(Request $request)
+    {
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+
+        $filename = 'expenses_export_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename={$filename}",
+        ];
+
+        return response()->stream(function () use ($dateFrom, $dateTo) {
+            $out = fopen('php://output', 'w');
+            
+            // Header
+            fputcsv($out, ['Regular Expenses Export']);
+            fputcsv($out, ['Generated at: ' . now()->format('Y-m-d H:i:s')]);
+            if ($dateFrom) fputcsv($out, ['From Date: ' . $dateFrom]);
+            if ($dateTo) fputcsv($out, ['To Date: ' . $dateTo]);
+            fputcsv($out, []);
+            
+            // Table headers
+            fputcsv($out, ['Date', 'Description', 'Amount']);
+            
+            // Query data
+            $query = Expense::orderBy('date', 'desc');
+            
+            if ($dateFrom) {
+                $query->whereDate('date', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('date', '<=', $dateTo);
+            }
+            
+            $expenses = $query->get();
+            
+            foreach ($expenses as $expense) {
+                fputcsv($out, [
+                    $expense->date,
+                    $expense->description,
+                    $expense->amount
+                ]);
+            }
+            
+            // Summary
+            fputcsv($out, []);
+            fputcsv($out, ['Total Records', count($expenses)]);
+            fputcsv($out, ['Total Amount', $expenses->sum('amount')]);
+            
+            fclose($out);
+        }, 200, $headers);
+    }
 }
