@@ -19,7 +19,10 @@
             <th class="px-4 py-3 text-left font-semibold">Kategori</th>
             <th class="px-4 py-3 text-left font-semibold">Stok</th>
             <th class="px-4 py-3 text-right font-semibold">Harga</th>
+            <th class="px-4 py-3 text-right font-semibold">Harga Turunan</th>
             <th class="px-4 py-3 text-left font-semibold">Unit</th>
+            <th class="px-4 py-3 text-right font-semibold">Min/Max Stok</th>
+            <th class="px-4 py-3 text-center font-semibold">Status</th>
             <th class="px-4 py-3 text-center font-semibold">Aksi</th>
           </template>
 
@@ -51,7 +54,7 @@
               <span
                 class="px-2 py-1 text-xs rounded-full font-medium"
                 :class="
-                  p.stock > 10
+                  p.stock > (p.min_stock || 10)
                     ? 'bg-green-100 text-green-700'
                     : p.stock > 0
                     ? 'bg-yellow-100 text-yellow-700'
@@ -61,12 +64,32 @@
                 {{ p.stock }}
               </span>
             </td>
-            <td class="px-4 py-3 text-right font-semibold text-indigo-600">
-              {{ formatRupiah(p.price) }}
+            <td class="px-4 py-3 text-right">
+              <div class="font-semibold text-indigo-600">
+                {{ formatRupiah(p.price) }}
+              </div>
+              <div v-if="hasBaseUnitPrice(p)" class="text-xs text-gray-500 mt-1">
+                {{ formatRupiah(p.base_unit_price) }} / {{ p.base_unit?.name || '-' }}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div v-if="p.derived_unit_price" class="font-semibold text-green-700">
+                {{ formatRupiah(p.derived_unit_price) }} / {{ p.unit?.name || '-' }}
+              </div>
+              <div v-else class="text-xs text-gray-400">-</div>
             </td>
             <td class="px-4 py-3 text-gray-600">
               <span v-if="getUnitDisplay(p)" class="px-2 py-1 text-xs rounded-full font-medium bg-gray-100 text-gray-700">
                 {{ getUnitDisplay(p) }}
+              </span>
+              <span v-else class="text-gray-400 text-xs">-</span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <span class="text-xs text-gray-700">{{ p.min_stock || '-' }} / {{ p.max_stock || '-' }}</span>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span v-if="typeof p.is_active === 'boolean'" :class="p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'" class="px-2 py-1 text-xs rounded-full font-medium">
+                {{ p.is_active ? 'Aktif' : 'Nonaktif' }}
               </span>
               <span v-else class="text-gray-400 text-xs">-</span>
             </td>
@@ -130,6 +153,10 @@ function getUnitDisplay(product) {
   
   // Otherwise just show unit name
   return product.unit.name;
+}
+
+function hasBaseUnitPrice(product) {
+  return product.base_unit && product.unit_quantity > 1 && product.base_unit_price;
 }
 
 function formatNumber(value) {

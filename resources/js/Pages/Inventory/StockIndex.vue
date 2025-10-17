@@ -35,15 +35,12 @@
         <DataTable v-if="products.length">
           <template #header>
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Nama Produk
-              </th>
-              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Stok
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Unit
-              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Produk</th>
+              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Konversi</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Min/Max Stok</th>
+              <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </template>
           <tr v-for="p in products" :key="p.id" class="hover:bg-gray-50">
@@ -59,7 +56,21 @@
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ p.unit }}
+              <span v-if="p.unit">{{ p.unit.name || p.unit }}</span>
+              <span v-else>-</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <span v-if="p.base_unit && p.unit_quantity > 1">{{ p.unit.name }} = {{ p.unit_quantity }} {{ p.base_unit.name }}</span>
+              <span v-else>-</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <span>{{ p.min_stock || '-' }} / {{ p.max_stock || '-' }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <span v-if="typeof p.is_active === 'boolean'" :class="p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'" class="px-2 py-1 text-xs rounded-full font-medium">
+                {{ p.is_active ? 'Aktif' : 'Nonaktif' }}
+              </span>
+              <span v-else class="text-gray-400 text-xs">-</span>
             </td>
           </tr>
         </DataTable>

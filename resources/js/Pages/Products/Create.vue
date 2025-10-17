@@ -61,7 +61,7 @@
 
         <!-- Harga Modal -->
         <div>
-          <label for="cost_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Modal</label>
+          <label for="cost_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Beli</label>
           <input
             id="cost_price"
             v-model="form.cost_price"
@@ -73,6 +73,20 @@
           />
           <div v-if="form.errors.cost_price" class="text-red-500 text-sm mt-1">
             {{ form.errors.cost_price }}
+          </div>
+          <!-- Base Unit Cost Price Calculator -->
+          <div v-if="showBaseUnitCostPrice" class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-amber-800 font-medium">
+                Harga Beli per {{ selectedBaseUnit?.name }}:
+              </span>
+              <span class="text-lg font-bold text-amber-900">
+                {{ formatRupiah(baseUnitCostPrice) }}
+              </span>
+            </div>
+            <div class="text-xs text-amber-700 mt-1">
+              {{ formatRupiah(form.cost_price) }} ÷ {{ form.unit_quantity }} {{ selectedBaseUnit?.name }} = {{ formatRupiah(baseUnitCostPrice) }}/{{ selectedBaseUnit?.name }}
+            </div>
           </div>
         </div>
 
@@ -90,6 +104,68 @@
           />
           <div v-if="form.errors.price" class="text-red-500 text-sm mt-1">
             {{ form.errors.price }}
+          </div>
+          <!-- Base Unit Selling Price Calculator -->
+          <div v-if="showBaseUnitPrice" class="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-green-800 font-medium">
+                Harga Jual per {{ selectedBaseUnit?.name }}:
+              </span>
+              <span class="text-lg font-bold text-green-900">
+                {{ formatRupiah(baseUnitPrice) }}
+              </span>
+            </div>
+            <div class="text-xs text-green-700 mt-1">
+              {{ formatRupiah(form.price) }} ÷ {{ form.unit_quantity }} {{ selectedBaseUnit?.name }} = {{ formatRupiah(baseUnitPrice) }}/{{ selectedBaseUnit?.name }}
+            </div>
+          </div>
+          <!-- Profit Margin Info -->
+          <div v-if="showProfitMargin" class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-sm text-blue-800 font-medium">
+                Profit per {{ selectedBaseUnit?.name }}:
+              </span>
+              <span class="text-lg font-bold text-blue-900">
+                {{ formatRupiah(profitPerBaseUnit) }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-blue-700">Margin:</span>
+              <span class="text-sm font-semibold text-blue-900">
+                {{ profitMarginPercentage }}%
+              </span>
+            </div>
+          </div>
+          <!-- Separate Pricing Fields -->
+          <div v-if="form.unit_id && form.base_unit_id && form.unit_quantity > 1" class="mt-4">
+            <label for="base_unit_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Jual per {{ selectedBaseUnit?.name }} (khusus)</label>
+            <input
+              id="base_unit_price"
+              v-model="form.base_unit_price"
+              type="number"
+              step="0.01"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+              placeholder="Contoh: 3200"
+            />
+            <div v-if="form.errors.base_unit_price" class="text-red-500 text-sm mt-1">
+              {{ form.errors.base_unit_price }}
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Isi jika ingin harga khusus per unit dasar (misal: harga eceran lebih mahal dari harga grosir)</div>
+          </div>
+          <div v-if="form.unit_id && form.base_unit_id && form.unit_quantity > 1" class="mt-2">
+            <label for="derived_unit_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Jual per {{ selectedUnit?.name }} (khusus)</label>
+            <input
+              id="derived_unit_price"
+              v-model="form.derived_unit_price"
+              type="number"
+              step="0.01"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+              placeholder="Contoh: 72000"
+            />
+            <div v-if="form.errors.derived_unit_price" class="text-red-500 text-sm mt-1">
+              {{ form.errors.derived_unit_price }}
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Isi jika ingin harga khusus per unit turunan (misal: harga grosir lebih murah dari harga eceran)</div>
           </div>
         </div>
 
@@ -187,6 +263,38 @@
 
         <!-- Actions -->
         <div class="flex gap-4">
+          <div class="flex-1">
+            <label for="min_stock" class="block text-sm font-medium text-gray-700 mb-2">Stok Minimum</label>
+            <input
+              id="min_stock"
+              v-model="form.min_stock"
+              type="number"
+              step="0.01"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+              placeholder="Contoh: 10"
+            />
+            <div v-if="form.errors.min_stock" class="text-red-500 text-sm mt-1">
+              {{ form.errors.min_stock }}
+            </div>
+          </div>
+          <div class="flex-1">
+            <label for="max_stock" class="block text-sm font-medium text-gray-700 mb-2">Stok Maksimum</label>
+            <input
+              id="max_stock"
+              v-model="form.max_stock"
+              type="number"
+              step="0.01"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+              placeholder="Contoh: 100"
+            />
+            <div v-if="form.errors.max_stock" class="text-red-500 text-sm mt-1">
+              {{ form.errors.max_stock }}
+            </div>
+          </div>
+          <div class="flex-1 flex items-center mt-6">
+            <label for="is_active" class="block text-sm font-medium text-gray-700 mr-2">Aktif?</label>
+            <input type="checkbox" id="is_active" v-model="form.is_active" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+          </div>
           <button
             type="submit"
             :disabled="form.processing"
@@ -233,6 +341,66 @@ const isBaseUnit = computed(() => {
   return selectedUnit.value?.is_base_unit || false
 })
 
+// Computed property to show base unit cost price
+const showBaseUnitCostPrice = computed(() => {
+  return form.unit_id && 
+         form.base_unit_id && 
+         form.unit_quantity > 1 && 
+         form.cost_price > 0 &&
+         !isBaseUnit.value
+})
+
+// Computed property to calculate base unit cost price
+const baseUnitCostPrice = computed(() => {
+  if (!showBaseUnitCostPrice.value) return 0
+  return form.cost_price / form.unit_quantity
+})
+
+// Computed property to show base unit selling price
+const showBaseUnitPrice = computed(() => {
+  return form.unit_id && 
+         form.base_unit_id && 
+         form.unit_quantity > 1 && 
+         form.price > 0 &&
+         !isBaseUnit.value
+})
+
+// Computed property to calculate base unit selling price
+const baseUnitPrice = computed(() => {
+  if (!showBaseUnitPrice.value) return 0
+  return form.price / form.unit_quantity
+})
+
+// Computed property to show profit margin
+const showProfitMargin = computed(() => {
+  return showBaseUnitPrice.value && 
+         showBaseUnitCostPrice.value && 
+         form.cost_price > 0
+})
+
+// Computed property to calculate profit per base unit
+const profitPerBaseUnit = computed(() => {
+  if (!showProfitMargin.value) return 0
+  return baseUnitPrice.value - baseUnitCostPrice.value
+})
+
+// Computed property to calculate profit margin percentage
+const profitMarginPercentage = computed(() => {
+  if (!showProfitMargin.value || baseUnitCostPrice.value === 0) return 0
+  return ((profitPerBaseUnit.value / baseUnitCostPrice.value) * 100).toFixed(2)
+})
+
+// Format currency
+function formatRupiah(value) {
+  if (!value && value !== 0) return 'Rp 0'
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value)
+}
+
 const form = useForm({
   name: '',
   stock: 0,
@@ -242,6 +410,11 @@ const form = useForm({
   unit_quantity: 1,
   base_unit_id: '',
   category_id: ''
+  , base_unit_price: '',
+  derived_unit_price: '',
+  min_stock: '',
+  max_stock: '',
+  is_active: true
 })
 
 function onUnitChange() {

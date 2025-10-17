@@ -25,6 +25,16 @@
         >
           <span class="text-sm font-medium">Dashboard</span>
         </Link>
+
+          <!-- Inventory Section -->
+          <Link
+            href="/inventory/stock-adjustments"
+            class="flex items-center px-6 py-3 text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 transition-colors duration-200"
+            :class="{ 'bg-yellow-100 text-yellow-700 border-r-2 border-yellow-600': $page.url.startsWith('/inventory/stock-adjustments') }"
+            @click="menuOpen = false"
+          >
+            <span class="text-sm font-medium">Stock Adjustment</span>
+          </Link>
         
         <!-- Products Section -->
         <div>

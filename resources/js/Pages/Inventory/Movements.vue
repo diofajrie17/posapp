@@ -91,6 +91,9 @@
             </td>
             <td class="px-6 py-4 text-sm font-medium text-gray-900">
               {{ m.product?.name || '-' }}
+              <span v-if="m.product?.base_unit && m.product?.unit_quantity > 1"> ({{ m.product.unit.name }} = {{ m.product.unit_quantity }} {{ m.product.base_unit.name }})</span>
+              <span v-else-if="m.product?.unit"> ({{ m.product.unit.name }})</span>
+              <span v-if="typeof m.product?.is_active === 'boolean' && !m.product.is_active" class="text-gray-400"> [Nonaktif]</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <span 

@@ -1,66 +1,334 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# POS Application
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A comprehensive Point of Sale (POS) application built with Laravel, Inertia.js, and Vue 3, featuring inventory management, sales tracking, member management, and comprehensive reporting.
 
-## About Laravel
+## 🚀 Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Product Management** - Manage products, categories, and units
+- **Inventory Control** - Track stock levels, movements, and perform stock opname
+- **Sales & POS** - Complete point of sale system with multiple payment methods
+- **Member Management** - Customer/member database with history tracking
+- **Expense Tracking** - Record operational expenses and advertising costs
+- **Facility Income** - Track income from facilities (parking, rentals, etc.)
+- **Comprehensive Reports** - Detailed sales reports, daily summaries, and CSV exports
+- **Modern UI** - Professional, uniform design system with responsive layouts
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📋 Requirements
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **PHP** >= 8.1
+- **Composer** >= 2.0
+- **Node.js** >= 18.x
+- **NPM** >= 9.x
+- **MySQL** >= 8.0 or **MariaDB** >= 10.3
+- **Apache** or **Nginx** web server
 
-## Learning Laravel
+## 🛠️ Installation & Setup
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 1. Clone the Repository
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+```bash
+git clone https://github.com/diofajrie17/posapp.git
+cd posapp
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 2. Install PHP Dependencies
 
-## Laravel Sponsors
+```bash
+composer install
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 3. Install Node.js Dependencies
 
-### Premium Partners
+```bash
+npm install
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### 4. Environment Configuration
 
-## Contributing
+Copy the example environment file and configure your settings:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+cp .env.example .env
+```
 
-## Code of Conduct
+Edit `.env` file and configure your database connection:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=posapp
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+```
 
-## Security Vulnerabilities
+Configure other settings as needed:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+APP_NAME="POS Application"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
 
-## License
+# WhatsApp Notifications (optional)
+WHATSAPP_API_URL=your_whatsapp_api_url
+WHATSAPP_API_TOKEN=your_token
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 5. Generate Application Key
+
+```bash
+php artisan key:generate
+```
+
+### 6. Create Database
+
+Create a new MySQL database:
+
+```bash
+mysql -u root -p
+CREATE DATABASE posapp;
+exit;
+```
+
+### 7. Run Database Migrations
+
+```bash
+php artisan migrate
+```
+
+### 8. Seed Database (Optional)
+
+Populate the database with sample data:
+
+```bash
+php artisan db:seed
+```
+
+### 9. Create Storage Link
+
+```bash
+php artisan storage:link
+```
+
+### 10. Build Frontend Assets
+
+For development:
+
+```bash
+npm run dev
+```
+
+For production:
+
+```bash
+npm run build
+```
+
+### 11. Start the Application
+
+Start the Laravel development server:
+
+```bash
+php artisan serve
+```
+
+The application will be available at: `http://localhost:8000`
+
+## 🎨 Design System
+
+This application uses a comprehensive design system with reusable components:
+
+- **PageHeader** - Consistent page titles with subtitles and action buttons
+- **Card** - Uniform content containers with shadow and borders
+- **DataTable** - Standardized table styling with pagination
+- **Button** - 5 variants (primary, secondary, danger, success, ghost) × 3 sizes
+- **EmptyState** - Friendly "no data" messages with icons
+
+For detailed design guidelines, see [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
+
+## 📦 Project Structure
+
+```
+posapp/
+├── app/
+│   ├── Http/Controllers/     # Application controllers
+│   ├── Models/               # Eloquent models
+│   ├── Services/             # Business logic services
+│   └── Jobs/                 # Queue jobs
+├── database/
+│   ├── migrations/           # Database migrations
+│   └── seeders/              # Database seeders
+├── resources/
+│   ├── js/
+│   │   ├── Components/       # Vue components
+│   │   ├── Layouts/          # Layout components
+│   │   └── Pages/            # Inertia.js pages
+│   ├── css/                  # Stylesheets
+│   └── views/                # Blade templates
+├── routes/
+│   ├── web.php               # Web routes
+│   ├── api.php               # API routes
+│   └── auth.php              # Authentication routes
+└── public/                   # Public assets
+```
+
+## 🔧 Development
+
+### Running Tests
+
+```bash
+php artisan test
+```
+
+### Code Style
+
+Format code using Laravel Pint:
+
+```bash
+./vendor/bin/pint
+```
+
+### Watch for Changes
+
+During development, keep the Vite dev server running:
+
+```bash
+npm run dev
+```
+
+### Clear Cache
+
+```bash
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+```
+
+### Optimize for Production
+
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+npm run build
+```
+
+## 📱 Electron Desktop App (Optional)
+
+This project includes an Electron wrapper for desktop deployment:
+
+```bash
+cd electron
+npm install
+npm start
+```
+
+## 🔐 Default Credentials
+
+After seeding the database, you can login with:
+
+- **Email**: admin@example.com
+- **Password**: password
+
+**Important:** Change these credentials immediately in production!
+
+## 📊 Key Features
+
+### Product Management
+- Create, edit, and delete products
+- Manage categories and units
+- Track stock levels with color-coded indicators
+- Low stock alerts
+
+### Inventory
+- Real-time stock tracking
+- Stock movement history
+- Stock opname functionality
+- Detailed movement logs (IN/OUT)
+
+### Sales & POS
+- Quick and efficient point of sale interface
+- Multiple payment methods (cash, transfer, e-wallet)
+- Transaction history
+- Customer/member association
+
+### Reports
+- Comprehensive financial reports
+- Daily sales summaries
+- Export to CSV
+- Filter by date range
+- Breakdown by category, payment method, etc.
+
+### Expenses & Facility Income
+- Track operational expenses
+- Record advertising costs
+- Manage facility income (parking, rentals)
+- Categorize and analyze spending
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## 🐛 Troubleshooting
+
+### Database Connection Issues
+
+```bash
+# Check MySQL is running
+sudo systemctl status mysql
+
+# Test connection
+mysql -u your_username -p
+```
+
+### Permission Issues
+
+```bash
+# Set correct permissions
+chmod -R 775 storage bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+```
+
+### NPM Build Errors
+
+```bash
+# Clear NPM cache and reinstall
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
+```
+
+### Assets Not Loading
+
+```bash
+# Rebuild assets
+npm run build
+
+# Clear Laravel cache
+php artisan cache:clear
+```
+
+## 📧 Support
+
+For issues and questions, please open an issue on the GitHub repository.
+
+## 🙏 Acknowledgements
+
+Built with:
+- [Laravel](https://laravel.com) - The PHP Framework
+- [Inertia.js](https://inertiajs.com) - Modern monolith architecture
+- [Vue 3](https://vuejs.org) - Progressive JavaScript framework
+- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
+- [Electron](https://electronjs.org) - Desktop app framework

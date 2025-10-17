@@ -10,18 +10,12 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
-    public function __construct()
-{
-    $this->middleware('permission:products.view')->only(['index','show']);
-    $this->middleware('permission:products.create')->only(['create','store']);
-    $this->middleware('permission:products.update')->only(['edit','update']);
-    $this->middleware('permission:products.delete')->only(['destroy']);
-}
-
+    /**
+     * Show product list
+     */
     public function index()
     {
         $products = Product::with(['category', 'unit', 'baseUnit'])->orderBy('name')->get();
-
         return Inertia::render('Products/Index', [
             'products' => $products,
             'can' => [
@@ -31,89 +25,45 @@ class ProductController extends Controller
             ],
         ]);
     }
-
-    public function create()
+    public function __construct()
     {
-        $categories = Category::all();
-        $units = Unit::all();
-        $baseUnits = Unit::where('is_base_unit', true)->get();
-        
-        return Inertia::render('Products/Create', [
-            'categories' => $categories,
-            'units' => $units,
-            'baseUnits' => $baseUnits
+        $this->middleware('permission:products.view')->only(['index','show']);
+        $this->middleware('permission:products.create')->only(['create','store']);
+        $this->middleware('permission:products.update')->only(['edit','update']);
+        $this->middleware('permission:products.delete')->only(['destroy']);
+    }
+
+    /**
+     * Show form to record newly bought product
+     */
+    public function purchaseForm()
+    {
+        $products = Product::where('is_active', true)->orderBy('name')->get(['id','name','stock']);
+        return Inertia::render('Products/Purchase', [
+            'products' => $products
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Handle purchase and update product stock
+     */
+    public function purchaseStore(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'stock' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
             'cost_price' => 'required|numeric|min:0',
-            'unit_id' => 'required|exists:units,id',
-            'unit_quantity' => 'nullable|numeric|min:0.0001',
-            'base_unit_id' => 'nullable|exists:units,id',
-            'category_id' => 'nullable|exists:categories,id'
+            'notes' => 'nullable|string|max:255',
         ]);
 
-        $data = $request->all();
-        
-        // Set default unit quantity if not provided
-        if (!isset($data['unit_quantity']) || $data['unit_quantity'] <= 0) {
-            $data['unit_quantity'] = 1;
-        }
+        $product = Product::findOrFail($request->product_id);
+        $product->stock += $request->quantity;
+        $product->cost_price = $request->cost_price; // Optionally update cost price
+        $product->save();
 
-        Product::create($data);
+        // Optionally, record purchase history here
 
-        return redirect()->route('products.index')->with('message', 'Produk berhasil ditambahkan');
+        return redirect()->route('products.index')->with('message', 'Pembelian produk berhasil dicatat dan stok diperbarui.');
     }
 
-    public function edit(Product $product)
-    {
-        $categories = Category::all();
-        $units = Unit::all();
-        $baseUnits = Unit::where('is_base_unit', true)->get();
-        
-        return Inertia::render('Products/Edit', [
-            'product' => $product->load('category', 'unit', 'baseUnit'),
-            'categories' => $categories,
-            'units' => $units,
-            'baseUnits' => $baseUnits
-        ]);
-    }
-
-    public function update(Request $request, Product $product)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'stock' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
-            'cost_price' => 'required|numeric|min:0',
-            'unit_id' => 'required|exists:units,id',
-            'unit_quantity' => 'nullable|numeric|min:0.0001',
-            'base_unit_id' => 'nullable|exists:units,id',
-            'category_id' => 'nullable|exists:categories,id'
-        ]);
-
-        $data = $request->all();
-        
-        // Set default unit quantity if not provided
-        if (!isset($data['unit_quantity']) || $data['unit_quantity'] <= 0) {
-            $data['unit_quantity'] = 1;
-        }
-
-        $product->update($data);
-
-        return redirect()->route('products.index')->with('message', 'Produk berhasil diupdate');
-    }
-
-    public function destroy(Product $product)
-    {
-        $product->delete();
-
-        return redirect()->route('products.index')->with('message', 'Produk dihapus');
-    }
 }
-

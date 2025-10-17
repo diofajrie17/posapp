@@ -10,6 +10,9 @@ class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
+        // Reset cached roles and permissions
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
         // daftar permission (silakan tambah sesuai kebutuhan kamu)
         $permissions = [
             // Members
@@ -34,13 +37,14 @@ class RolePermissionSeeder extends Seeder
             'settings.manage',
         ];
 
+        // Create all permissions first
         foreach ($permissions as $p) {
-            Permission::findOrCreate($p, 'web');
+            Permission::create(['name' => $p, 'guard_name' => 'web']);
         }
 
         // Roles
-        $admin = Role::findOrCreate('Admin', 'web');
-        $cashier = Role::findOrCreate('Kasir', 'web');
+        $admin = Role::create(['name' => 'Admin', 'guard_name' => 'web']);
+        $cashier = Role::create(['name' => 'Kasir', 'guard_name' => 'web']);
 
         // Admin: semua permission
         $admin->givePermissionTo(Permission::all());

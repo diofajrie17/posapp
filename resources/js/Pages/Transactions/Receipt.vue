@@ -28,9 +28,18 @@
         <table class="items">
           <tbody>
             <tr v-for="it in transaction.items" :key="it.id">
-              <td class="name">{{ it.product?.name || '-' }}</td>
+              <td class="name">
+                {{ it.product?.name || '-' }}
+                <span v-if="it.sell_in_base_unit && it.product?.base_unit"> ({{ it.product.base_unit.name }})</span>
+                <span v-else-if="it.product?.unit"> ({{ it.product.unit.name }})</span>
+                <span v-if="it.product?.unit_quantity && it.product?.base_unit"> [{{ it.product.unit_quantity }} {{ it.product.base_unit.name }}]</span>
+              </td>
               <td class="qty">{{ it.quantity }}x</td>
-              <td class="price">{{ rupiah(it.price_each) }}</td>
+              <td class="price">
+                {{ rupiah(it.price_each) }}
+                <span v-if="it.sell_in_base_unit && it.product?.base_unit">/{{ it.product.base_unit.name }}</span>
+                <span v-else-if="it.product?.unit">/{{ it.product.unit.name }}</span>
+              </td>
               <td class="total">{{ rupiah(it.quantity * it.price_each) }}</td>
             </tr>
           </tbody>

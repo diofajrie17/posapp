@@ -7,6 +7,7 @@ use App\Models\Member;
 use App\Models\SalesItem;
 use App\Models\SalesTransaction;
 use App\Models\StockMovement;          // dari modul inventori
+use App\Services\FifoInventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -14,8 +15,12 @@ use Inertia\Inertia;
 
 class TransactionController extends Controller
 {
-    public function __construct()
+    protected $fifoService;
+
+    public function __construct(FifoInventoryService $fifoService)
     {
+        $this->fifoService = $fifoService;
+        
         // Jika memakai Spatie Permission, aktifkan ini
         $this->middleware('permission:transactions.view')->only(['index','show','receipt']);
         $this->middleware('permission:transactions.create')->only(['create','store']);
@@ -55,8 +60,17 @@ class TransactionController extends Controller
      */
     public function create()
     {
+        $products = Product::with(['unit:id,name,symbol', 'baseUnit:id,name,symbol'])
+            ->where('is_active', true) // Only show active products
+            ->where('stock', '>', 0) // Only show products with stock available
+            ->orderBy('name')
+            ->get([
+                'id', 'name', 'price', 'stock', 'unit', 'unit_id', 'unit_quantity', 'base_unit_id',
+                'base_unit_price', 'derived_unit_price', 'min_stock'
+            ]);
+
         return Inertia::render('Transactions/Create', [
-            'products' => Product::orderBy('name')->get(['id','name','price','stock','unit']),
+            'products' => $products,
             'members'  => Member::orderBy('full_name')->get(['id','full_name']),
         ]);
     }
@@ -67,16 +81,17 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'items'                 => 'required|array|min:1',
-            'items.*.product_id'    => 'required|exists:products,id',
-            'items.*.quantity'      => 'required|integer|min:1',
-            'items.*.price_each'    => 'required|numeric|min:0',
-            'payment_type'          => 'required|string', // Cash / QR / Transfer
-            'member_id'             => 'nullable|exists:members,id',
-            'discount_type'         => 'nullable|in:fixed,percent',
-            'discount_value'        => 'nullable|numeric|min:0',
-            'paid_amount'           => 'nullable|numeric|min:0',
-            'notes'                 => 'nullable|string|max:255',
+            'items'                      => 'required|array|min:1',
+            'items.*.product_id'         => 'required|exists:products,id',
+            'items.*.quantity'           => 'required|numeric|min:0.001',
+            'items.*.price_each'         => 'required|numeric|min:0',
+            'items.*.sell_in_base_unit'  => 'nullable|boolean',
+            'payment_type'               => 'required|string', // Cash / QR / Transfer
+            'member_id'                  => 'nullable|exists:members,id',
+            'discount_type'              => 'nullable|in:fixed,percent',
+            'discount_value'             => 'nullable|numeric|min:0',
+            'paid_amount'                => 'nullable|numeric|min:0',
+            'notes'                      => 'nullable|string|max:255',
         ]);
 
         // 1) Hitung subtotal & diskon
@@ -121,12 +136,24 @@ class TransactionController extends Controller
             /** @var \Illuminate\Support\Collection<int,\App\Models\Product> $products */
             $products = Product::whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
 
-            // Cek stok cukup
+            // Cek stok cukup (convert to base units for checking)
             $errors = [];
             foreach ($request->items as $i => $item) {
                 $p = $products[$item['product_id']];
-                if ($p->stock < $item['quantity']) {
-                    $errors["items.$i.quantity"] = "Stok {$p->name} tidak cukup. Stok tersedia: {$p->stock}.";
+                $sellInBaseUnit = $item['sell_in_base_unit'] ?? false;
+                
+                // Calculate quantity in base units using Product model method
+                $quantityInBaseUnits = $p->convertToBaseUnits($item['quantity'], $sellInBaseUnit);
+                
+                // Get available stock from FIFO batches (or product stock as fallback)
+                $availableStock = $this->fifoService->getAvailableStock($p->id);
+                if ($availableStock == 0) {
+                    $availableStock = $p->stock; // Fallback to product stock if no batches
+                }
+                
+                $unitName = $p->baseUnit ? $p->baseUnit->name : ($p->unit ? $p->unit->name : 'unit');
+                if ($availableStock < $quantityInBaseUnits) {
+                    $errors["items.$i.quantity"] = "Stok {$p->name} tidak cukup. Stok tersedia: {$availableStock} {$unitName}.";
                 }
             }
             if (!empty($errors)) {
@@ -149,27 +176,63 @@ class TransactionController extends Controller
                 'date_time'       => now(),
             ]);
 
-            // Simpan item + kurangi stok + catat movement OUT
+            // Simpan item + kurangi stok + catat movement OUT + FIFO allocation
             foreach ($request->items as $item) {
-                SalesItem::create([
+                $product = $products[$item['product_id']];
+                $sellInBaseUnit = $item['sell_in_base_unit'] ?? false;
+                
+                // Calculate quantity in base units using Product model method
+                $quantityInBaseUnits = $product->convertToBaseUnits($item['quantity'], $sellInBaseUnit);
+                
+                // Create sales item
+                $salesItem = SalesItem::create([
                     'transaction_id' => $trx->id,
                     'product_id'     => $item['product_id'],
                     'quantity'       => $item['quantity'],
                     'price_each'     => $item['price_each'],
                 ]);
 
-                // Kurangi stok
-                Product::whereKey($item['product_id'])->decrement('stock', $item['quantity']);
+                // === FIFO ALLOCATION: Allocate from oldest batches first ===
+                try {
+                    // Check if product has any batches
+                    $availableStock = $this->fifoService->getAvailableStock($item['product_id']);
+                    
+                    // If no batches exist, create an initial batch from current stock
+                    if ($availableStock == 0 && $product->stock > 0) {
+                        $this->fifoService->addBatch(
+                            productId: $item['product_id'],
+                            quantityInBaseUnit: $product->stock,
+                            costPerBaseUnit: $product->cost_price ?? 0,
+                            supplier: 'System Migration',
+                            notes: 'Auto-created batch from existing stock'
+                        );
+                    }
+                    
+                    // Now allocate from batches
+                    $this->fifoService->allocateStock($salesItem, $quantityInBaseUnits);
+                } catch (\Exception $e) {
+                    // If FIFO allocation fails, throw error
+                    throw ValidationException::withMessages([
+                        'items' => "FIFO allocation failed for {$product->name}: {$e->getMessage()}"
+                    ]);
+                }
 
-                // Movement OUT
+                // Update product stock (will be recalculated from batches)
+                $this->fifoService->updateProductStock($item['product_id']);
+
+                // Movement OUT (record in base units)
                 if (class_exists(StockMovement::class)) {
+                    $unitSold = $sellInBaseUnit 
+                        ? ($product->baseUnit->name ?? 'unit')
+                        : ($product->unit->name ?? 'unit');
+                    
                     StockMovement::create([
                         'product_id' => $item['product_id'],
                         'direction'  => 'OUT',
-                        'quantity'   => $item['quantity'],
+                        'quantity'   => $quantityInBaseUnits,
                         'source'     => 'pos',
                         'source_id'  => $trx->id,
-                        'note'       => 'POS sale',
+                        'note'       => "POS sale: {$item['quantity']} {$unitSold} (Base: {$quantityInBaseUnits} " . ($product->baseUnit->name ?? 'unit') . ")",
                         'moved_at'   => now(),
                     ]);
                 }
@@ -222,9 +285,10 @@ class TransactionController extends Controller
         DB::transaction(function () use ($transaction) {
             $transaction->load('items');
 
-            // Kembalikan stok & log movement IN
+            // Kembalikan stok & log movement IN + deallocate FIFO
             foreach ($transaction->items as $it) {
-                Product::whereKey($it->product_id)->increment('stock', $it->quantity);
+                // Deallocate from batches (returns stock to original batches)
+                $this->fifoService->deallocateStock($it);
 
                 if (class_exists(StockMovement::class)) {
                     StockMovement::create([

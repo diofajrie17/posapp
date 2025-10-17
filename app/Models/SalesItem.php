@@ -25,4 +25,33 @@ class SalesItem extends Model
     {
         return $this->belongsTo(SalesTransaction::class, 'transaction_id');
     }
+
+    /**
+     * Get all batch allocations for this sales item
+     */
+    public function allocations()
+    {
+        return $this->hasMany(BatchAllocation::class);
+    }
+
+    /**
+     * Get total COGS (Cost of Goods Sold) for this item
+     */
+    public function getCogs(): float
+    {
+        return $this->allocations()
+            ->get()
+            ->sum(function ($allocation) {
+                return $allocation->quantity_allocated * $allocation->cost_per_unit;
+            });
+    }
+
+    /**
+     * Get gross profit (Revenue - COGS)
+     */
+    public function getGrossProfit(): float
+    {
+        $revenue = $this->quantity * $this->price_each;
+        return $revenue - $this->getCogs();
+    }
 }

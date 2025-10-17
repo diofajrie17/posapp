@@ -11,10 +11,17 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ExpenseController;  
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdController;
-use App\Http\Controllers\FacilityController;    
+use App\Http\Controllers\FacilityController;
+
+
+// Record newly bought product (purchase)
+Route::middleware(['auth', 'permission:products.update'])->group(function() {
+    Route::get('/products/purchase', [ProductController::class, 'purchaseForm'])->name('products.purchase.form');
+    Route::post('/products/purchase', [ProductController::class, 'purchaseStore'])->name('products.purchase.store');
+});
 
 
 
@@ -138,6 +145,11 @@ Route::middleware('permission:members.update')->group(function () {
 
 Route::middleware('permission:members.delete')->group(function () {
     Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
+});
+
+Route::middleware(['auth', 'permission:products.update'])->group(function() {
+    Route::get('/inventory/stock-adjustments', [\App\Http\Controllers\StockAdjustmentController::class, 'create'])->name('stock-adjustments.create');
+    Route::post('/inventory/stock-adjustments', [\App\Http\Controllers\StockAdjustmentController::class, 'store'])->name('stock-adjustments.store');
 });
 
 
