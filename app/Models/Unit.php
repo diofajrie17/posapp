@@ -12,6 +12,7 @@ class Unit extends Model
     protected $fillable = [
         'name',
         'symbol',
+        'type',
         'is_base_unit'
     ];
 
@@ -36,5 +37,40 @@ class Unit extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    // Scope for filtering by type
+    public function scopeOfType($query, $type)
+    {
+        return $query->where('type', $type);
+    }
+
+    // Parent unit relationship (for derived units)
+    public function parentUnit()
+    {
+        return $this->belongsTo(Unit::class, 'parent_unit_id');
+    }
+
+    // Child units (derived from this base unit)
+    public function derivedUnits()
+    {
+        return $this->hasMany(Unit::class, 'parent_unit_id');
+    }
+
+    /**
+     * Get conversion factor for this unit
+     * Base units return 1, derived units return their conversion_factor
+     */
+    public function getConversionFactorAttribute()
+    {
+        return $this->attributes['conversion_factor'] ?? 1;
+    }
+
+    /**
+     * Convert quantity from this unit to base unit
+     */
+    public function toBaseUnit($quantity)
+    {
+        return $quantity * $this->conversion_factor;
     }
 }

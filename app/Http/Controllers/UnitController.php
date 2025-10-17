@@ -33,6 +33,7 @@ class UnitController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:units,name',
             'symbol' => 'nullable|string|max:10',
+            'type' => 'required|in:piece,weight,volume,length',
             'is_base_unit' => 'required|boolean'
         ]);
 
@@ -59,6 +60,7 @@ class UnitController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:units,name,' . $unit->id,
             'symbol' => 'nullable|string|max:10',
+            'type' => 'required|in:piece,weight,volume,length',
             'is_base_unit' => 'required|boolean'
         ]);
 

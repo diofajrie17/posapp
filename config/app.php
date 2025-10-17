@@ -20,6 +20,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Store Address
+    |--------------------------------------------------------------------------
+    |
+    | This value is the physical address of your store. This value is used 
+    | on receipts and other customer-facing documents.
+    |
+    */
+
+    'store_address' => env('APP_STORE_ADDRESS', 'Jl. Contoh No. 123, Kota'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

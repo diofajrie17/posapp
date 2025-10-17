@@ -7,6 +7,7 @@ use App\Models\SalesItem;
 use App\Models\Expense;
 use App\Models\Ad;
 use App\Models\Facility;
+use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,10 +18,7 @@ class ReportController extends Controller
 {
     public function __construct()
 {
-    $this->middleware('permission:products.view')->only(['index','show']);
-    $this->middleware('permission:products.create')->only(['create','store']);
-    $this->middleware('permission:products.update')->only(['edit','update']);
-    $this->middleware('permission:products.delete')->only(['destroy']);
+    $this->middleware('permission:reports.view');
 }
 
     public function dailySales(Request $request)
@@ -375,5 +373,63 @@ class ReportController extends Controller
             
             fclose($out);
         }, 200, $headers);
+    }
+
+    public function attendance(Request $request)
+    {
+        $startDate = $request->query('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->query('end_date', now()->toDateString());
+
+        // Statistics
+        $totalAttendances = Attendance::dateRange($startDate, $endDate)->count();
+        $memberAttendances = Attendance::dateRange($startDate, $endDate)->memberType()->count();
+        $dailyAttendances = Attendance::dateRange($startDate, $endDate)->dailyType()->count();
+        
+        $days = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1;
+        $averagePerDay = $days > 0 ? round($totalAttendances / $days, 1) : 0;
+
+        // Daily breakdown
+        $dailyData = Attendance::selectRaw('
+                date,
+                COUNT(*) as count
+            ')
+            ->dateRange($startDate, $endDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // Top members by visit count
+        $topMembers = Attendance::select('member_id',
+                DB::raw('COUNT(*) as visit_count'))
+            ->memberType()
+            ->whereNotNull('member_id')
+            ->dateRange($startDate, $endDate)
+            ->with('member:id,full_name')
+            ->groupBy('member_id')
+            ->orderByDesc('visit_count')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'member_id' => $item->member_id,
+                    'member_name' => $item->member->full_name ?? '-',
+                    'visit_count' => $item->visit_count,
+                ];
+            });
+
+        return Inertia::render('Reports/Attendance', [
+            'stats' => [
+                'total' => $totalAttendances,
+                'members' => $memberAttendances,
+                'daily' => $dailyAttendances,
+                'average_per_day' => $averagePerDay,
+            ],
+            'dailyData' => $dailyData,
+            'topMembers' => $topMembers,
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]
+        ]);
     }
 }

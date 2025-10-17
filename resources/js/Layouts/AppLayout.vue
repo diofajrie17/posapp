@@ -78,6 +78,16 @@
             >
               <span class="text-sm">Unit</span>
             </Link>
+            
+            <!-- Movement History submenu -->
+            <Link
+              href="/inventory/movements"
+              class="flex items-center px-8 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors duration-200 text-sm"
+              :class="{ 'bg-gray-100 text-gray-800': route().current('stock.movements') }"
+              @click="menuOpen = false"
+            >
+              <span class="text-sm">Riwayat Pergerakan</span>
+            </Link>
           </div>
         </div>
         
@@ -88,6 +98,15 @@
           @click="menuOpen = false"
         >
           <span class="text-sm font-medium">Transaksi</span>
+        </Link>
+        
+        <Link
+          href="/purchases"
+          class="flex items-center px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
+          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('purchases.index') || route().current('purchases.create') || route().current('purchases.show') }"
+          @click="menuOpen = false"
+        >
+          <span class="text-sm font-medium">Pembelian</span>
         </Link>
         
         <Link
@@ -126,23 +145,80 @@
           <span class="text-sm font-medium">Fasilitas</span>
         </Link>
         
-        <Link
-          href="/inventory/stock"
-          class="flex items-center px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
-          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('stock.index') }"
-          @click="menuOpen = false"
-        >
-          <span class="text-sm font-medium">Stok</span>
-        </Link>
-        
-        <Link
-          href="/members"
-          class="flex items-center px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
-          :class="{ 'bg-indigo-100 text-indigo-700 border-r-2 border-indigo-600': route().current('members.index') }"
-          @click="menuOpen = false"
-        >
-          <span class="text-sm font-medium">Member</span>
-        </Link>
+        <!-- Member Section -->
+        <div>
+          <button
+            @click="toggleMembersMenu"
+            class="w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
+          >
+            <span class="text-sm font-medium">Member & Kehadiran</span>
+            <svg 
+              class="w-4 h-4 transition-transform duration-200" 
+              :class="{ 'rotate-180': membersMenuOpen }"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          
+          <!-- Collapsible submenu -->
+          <div 
+            v-show="membersMenuOpen" 
+            class="transition-all duration-200 ease-in-out overflow-hidden"
+          >
+            <!-- Members List -->
+            <Link
+              href="/members"
+              class="flex items-center px-8 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors duration-200 text-sm"
+              :class="{ 'bg-gray-100 text-gray-800': route().current('members.index') || route().current('members.create') || route().current('members.edit') }"
+              @click="menuOpen = false"
+            >
+              <span class="text-sm">Daftar Member</span>
+            </Link>
+            
+            <!-- Packages -->
+            <Link
+              href="/packages"
+              class="flex items-center px-8 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors duration-200 text-sm"
+              :class="{ 'bg-gray-100 text-gray-800': route().current('packages.index') || route().current('packages.create') || route().current('packages.edit') }"
+              @click="menuOpen = false"
+            >
+              <span class="text-sm">Paket Membership</span>
+            </Link>
+            
+            <!-- Check-in -->
+            <Link
+              href="/attendance/checkin"
+              class="flex items-center px-8 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors duration-200 text-sm"
+              :class="{ 'bg-gray-100 text-gray-800': route().current('attendance.checkin') }"
+              @click="menuOpen = false"
+            >
+              <span class="text-sm">Check-in</span>
+            </Link>
+            
+            <!-- Attendance History -->
+            <Link
+              href="/attendance/history"
+              class="flex items-center px-8 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors duration-200 text-sm"
+              :class="{ 'bg-gray-100 text-gray-800': route().current('attendance.history') }"
+              @click="menuOpen = false"
+            >
+              <span class="text-sm">Riwayat Kehadiran</span>
+            </Link>
+            
+            <!-- Attendance Reports -->
+            <Link
+              href="/reports/attendance"
+              class="flex items-center px-8 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-colors duration-200 text-sm"
+              :class="{ 'bg-gray-100 text-gray-800': route().current('reports.attendance') }"
+              @click="menuOpen = false"
+            >
+              <span class="text-sm">Laporan Kehadiran</span>
+            </Link>
+          </div>
+        </div>
       </nav>
 
       <!-- Logout Button at Bottom -->
@@ -208,9 +284,14 @@ defineProps({
 
 const menuOpen = ref(false)
 const productsMenuOpen = ref(true) // Start with products menu open
+const membersMenuOpen = ref(true) // Start with members menu open
 
 function toggleProductsMenu() {
   productsMenuOpen.value = !productsMenuOpen.value
+}
+
+function toggleMembersMenu() {
+  membersMenuOpen.value = !membersMenuOpen.value
 }
 
 function logout() {

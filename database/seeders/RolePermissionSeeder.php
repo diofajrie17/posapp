@@ -15,8 +15,17 @@ class RolePermissionSeeder extends Seeder
             // Members
             'members.view', 'members.create', 'members.update', 'members.delete',
 
+            // Membership Packages
+            'packages.view', 'packages.create', 'packages.update', 'packages.delete',
+
+            // Attendance
+            'attendance.checkin', 'attendance.view', 'attendance.reports',
+
             // Products
             'products.view', 'products.create', 'products.update', 'products.delete', 'products.stockopname',
+
+            // Purchases
+            'purchases.view', 'purchases.create', 'purchases.delete',
 
             // Transactions (POS)
             'transactions.view', 'transactions.create', 'transactions.reprint', 'transactions.delete', // delete biasanya HANYA admin
@@ -48,6 +57,8 @@ class RolePermissionSeeder extends Seeder
         // Kasir: subset yang aman
         $cashier->syncPermissions([
             'members.view', 'members.create', 'members.update',
+            'packages.view',
+            'attendance.checkin', 'attendance.view',
             'products.view',
             'transactions.view', 'transactions.create', 'transactions.reprint',
             'reports.view',

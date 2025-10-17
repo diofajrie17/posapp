@@ -48,31 +48,16 @@
           <label for="stock" class="block text-sm font-medium text-gray-700 mb-2">Stok</label>
           <input
             id="stock"
-            v-model="form.stock"
+            v-model.number="form.stock"
             type="number"
+            step="1"
+            min="0"
             required
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             placeholder="0"
           />
           <div v-if="form.errors.stock" class="text-red-500 text-sm mt-1">
             {{ form.errors.stock }}
-          </div>
-        </div>
-
-        <!-- Harga Modal -->
-        <div>
-          <label for="cost_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Modal</label>
-          <input
-            id="cost_price"
-            v-model="form.cost_price"
-            type="number"
-            step="0.01"
-            required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="0"
-          />
-          <div v-if="form.errors.cost_price" class="text-red-500 text-sm mt-1">
-            {{ form.errors.cost_price }}
           </div>
         </div>
 
@@ -95,7 +80,9 @@
 
         <!-- Unit -->
         <div>
-          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">
+            Unit (Base Unit)
+          </label>
           <select
             id="unit_id"
             v-model="form.unit_id"
@@ -103,7 +90,7 @@
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             @change="onUnitChange"
           >
-            <option value="">Pilih Unit</option>
+            <option value="">Pilih Base Unit</option>
             <option 
               v-for="unit in units" 
               :key="unit.id" 
@@ -112,6 +99,9 @@
               {{ unit.name }} {{ unit.symbol ? '(' + unit.symbol + ')' : '' }}
             </option>
           </select>
+          <p class="text-xs text-gray-500 mt-1">
+            Produk harus menggunakan base unit. Derived unit hanya untuk pembelian.
+          </p>
           <div v-if="form.errors.unit_id" class="text-red-500 text-sm mt-1">
             {{ form.errors.unit_id }}
           </div>
@@ -237,7 +227,6 @@ const form = useForm({
   name: '',
   stock: 0,
   price: 0,
-  cost_price: 0,
   unit_id: '',
   unit_quantity: 1,
   base_unit_id: '',
@@ -247,8 +236,12 @@ const form = useForm({
 function onUnitChange() {
   // Reset unit configuration when unit changes
   if (isBaseUnit.value) {
-    form.base_unit_id = ''
+    // For base units, set base_unit_id to the same as unit_id
+    form.base_unit_id = form.unit_id
     form.unit_quantity = 1
+  } else {
+    // For derived units, clear base_unit_id so user can select
+    form.base_unit_id = ''
   }
 }
 

@@ -14,6 +14,13 @@ class SalesItem extends Model
         'product_id',
         'quantity',
         'price_each',
+        'unit_cogs',
+    ];
+
+    protected $casts = [
+        'quantity' => 'decimal:2',
+        'price_each' => 'decimal:2',
+        'unit_cogs' => 'decimal:2',
     ];
 
     public function product()

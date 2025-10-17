@@ -3,14 +3,7 @@
     <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8">
       <!-- Judul -->
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Edconst selectedBaseUnit = computed(() => {
-  if (!form.base_unit_id) return null
-  return props.baseUnits.find(unit => unit.id == form.base_unit_id)
-})
-
-const isBaseUnit = computed(() => {
-  return selectedUnit.value?.is_base_unit || false
-})roduk ✏️</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Edit Produk ✏️</h1>
         <p class="text-gray-600">Perbarui informasi produk sesuai kebutuhan</p>
       </div>
 
@@ -55,31 +48,16 @@ const isBaseUnit = computed(() => {
           <label for="stock" class="block text-sm font-medium text-gray-700 mb-2">Stok</label>
           <input
             id="stock"
-            v-model="form.stock"
+            v-model.number="form.stock"
             type="number"
+            step="1"
+            min="0"
             required
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             placeholder="0"
           />
           <div v-if="form.errors.stock" class="text-red-500 text-sm mt-1">
             {{ form.errors.stock }}
-          </div>
-        </div>
-
-        <!-- Harga Modal -->
-        <div>
-          <label for="cost_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Modal</label>
-          <input
-            id="cost_price"
-            v-model="form.cost_price"
-            type="number"
-            step="0.01"
-            required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="0"
-          />
-          <div v-if="form.errors.cost_price" class="text-red-500 text-sm mt-1">
-            {{ form.errors.cost_price }}
           </div>
         </div>
 
@@ -102,7 +80,9 @@ const isBaseUnit = computed(() => {
 
         <!-- Unit -->
         <div>
-          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">
+            Unit (Base Unit)
+          </label>
           <select
             id="unit_id"
             v-model="form.unit_id"
@@ -110,7 +90,7 @@ const isBaseUnit = computed(() => {
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             @change="onUnitChange"
           >
-            <option value="">Pilih Unit</option>
+            <option value="">Pilih Base Unit</option>
             <option 
               v-for="unit in units" 
               :key="unit.id" 
@@ -119,6 +99,9 @@ const isBaseUnit = computed(() => {
               {{ unit.name }} {{ unit.symbol ? '(' + unit.symbol + ')' : '' }}
             </option>
           </select>
+          <p class="text-xs text-gray-500 mt-1">
+            Produk harus menggunakan base unit. Derived unit hanya untuk pembelian.
+          </p>
           <div v-if="form.errors.unit_id" class="text-red-500 text-sm mt-1">
             {{ form.errors.unit_id }}
           </div>
@@ -241,7 +224,6 @@ const form = useForm({
   name: props.product.name,
   stock: props.product.stock,
   price: props.product.price,
-  cost_price: props.product.cost_price || 0,
   unit_id: props.product.unit_id || '',
   unit_quantity: props.product.unit_quantity || 1,
   base_unit_id: props.product.base_unit_id || '',
@@ -251,8 +233,12 @@ const form = useForm({
 function onUnitChange() {
   // Reset unit configuration when unit changes
   if (isBaseUnit.value) {
-    form.base_unit_id = ''
+    // For base units, set base_unit_id to the same as unit_id
+    form.base_unit_id = form.unit_id
     form.unit_quantity = 1
+  } else {
+    // For derived units, clear base_unit_id so user can select
+    form.base_unit_id = ''
   }
 }
 

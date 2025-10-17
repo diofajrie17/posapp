@@ -9,12 +9,14 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\StockController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;  
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AdController;
-use App\Http\Controllers\FacilityController;    
+use App\Http\Controllers\FacilityController;
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\MembershipPackageController;
+use App\Http\Controllers\AttendanceController;    
 
 
 
@@ -41,12 +43,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/api/units-for-select', [UnitController::class, 'getUnitsForSelect'])->name('units.for-select');
         Route::delete('/transactions/{transaction}', [TransactionController::class, 'destroy'])
             ->name('transactions.destroy');
-                Route::get('/reports/daily-sales', [ReportController::class, 'dailySales'])->name('reports.daily');
+        Route::get('/reports/daily-sales', [ReportController::class, 'dailySales'])->name('reports.daily');
         Route::get('/reports/daily-sales/export', [ReportController::class, 'exportDailySalesCsv'])->name('reports.daily.export');
-                Route::get('/inventory/stock', [StockController::class, 'index'])->name('stock.index');
-        Route::get('/inventory/stock/opname', [StockController::class, 'create'])->name('stock.create');
-        Route::post('/inventory/stock/opname', [StockController::class, 'store'])->name('stock.store');
-        Route::get('/inventory/movements', [StockController::class, 'movements'])->name('stock.movements');
+        
+        // Stock opname moved to products
+        Route::post('/products/stock-opname', [ProductController::class, 'stockOpname'])->name('products.stock-opname');
+        Route::get('/products/{product}/movements', [ProductController::class, 'getStockMovements'])->name('products.movements');
+        Route::get('/products/{product}/units', [ProductController::class, 'getAvailableUnits'])->name('products.units');
+        
+        // Inventory movements (moved from StockController)
+        Route::get('/inventory/movements', [ProductController::class, 'movements'])->name('stock.movements');
     });
     });
 
@@ -115,30 +121,78 @@ Route::middleware('auth')->group(function () {
             ->name('notifications.send');
     });
 
-    Route::middleware('permission:products.stockopname')->group(function () {
-        Route::get('/inventory/stock', [StockController::class, 'index'])->name('stock.index');
-        Route::get('/inventory/stock/opname', [StockController::class, 'create'])->name('stock.create');
-        Route::post('/inventory/stock/opname', [StockController::class, 'store'])->name('stock.store');
-        Route::get('/inventory/movements', [StockController::class, 'movements'])->name('stock.movements');
+    // Purchase Management
+    Route::middleware('permission:purchases.view')->group(function () {
+        Route::get('/purchases', [PurchaseController::class, 'index'])->name('purchases.index');
     });
-    // Manajemen Member
-Route::middleware('permission:members.view')->group(function () {
-    Route::get('/members', [MemberController::class, 'index'])->name('members.index');
-});
+    
+    Route::middleware('permission:purchases.create')->group(function () {
+        Route::get('/purchases/create', [PurchaseController::class, 'create'])->name('purchases.create');
+        Route::post('/purchases', [PurchaseController::class, 'store'])->name('purchases.store');
+    });
+    
+    Route::middleware('permission:purchases.view')->group(function () {
+        Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
+    });
+    
+    Route::middleware('permission:purchases.delete')->group(function () {
+        Route::delete('/purchases/{purchase}', [PurchaseController::class, 'destroy'])->name('purchases.destroy');
+    });
+    // Member Management
+    Route::middleware('permission:members.view')->group(function () {
+        Route::get('/members', [MemberController::class, 'index'])->name('members.index');
+    });
 
-Route::middleware('permission:members.create')->group(function () {
-    Route::get('/members/create', [MemberController::class, 'create'])->name('members.create');
-    Route::post('/members', [MemberController::class, 'store'])->name('members.store');
-});
+    Route::middleware('permission:members.create')->group(function () {
+        Route::get('/members/create', [MemberController::class, 'create'])->name('members.create');
+        Route::post('/members', [MemberController::class, 'store'])->name('members.store');
+    });
 
-Route::middleware('permission:members.update')->group(function () {
-    Route::get('/members/{member}/edit', [MemberController::class, 'edit'])->name('members.edit');
-    Route::put('/members/{member}', [MemberController::class, 'update'])->name('members.update');
-});
+    Route::middleware('permission:members.update')->group(function () {
+        Route::get('/members/{member}/edit', [MemberController::class, 'edit'])->name('members.edit');
+        Route::put('/members/{member}', [MemberController::class, 'update'])->name('members.update');
+    });
 
-Route::middleware('permission:members.delete')->group(function () {
-    Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
-});
+    Route::middleware('permission:members.delete')->group(function () {
+        Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
+    });
+
+    // Membership Packages
+    Route::middleware('permission:packages.view')->group(function () {
+        Route::get('/packages', [MembershipPackageController::class, 'index'])->name('packages.index');
+    });
+
+    Route::middleware('permission:packages.create')->group(function () {
+        Route::get('/packages/create', [MembershipPackageController::class, 'create'])->name('packages.create');
+        Route::post('/packages', [MembershipPackageController::class, 'store'])->name('packages.store');
+    });
+
+    Route::middleware('permission:packages.update')->group(function () {
+        Route::get('/packages/{package}/edit', [MembershipPackageController::class, 'edit'])->name('packages.edit');
+        Route::put('/packages/{package}', [MembershipPackageController::class, 'update'])->name('packages.update');
+    });
+
+    Route::middleware('permission:packages.delete')->group(function () {
+        Route::delete('/packages/{package}', [MembershipPackageController::class, 'destroy'])->name('packages.destroy');
+    });
+
+    // Attendance Management
+    Route::middleware('permission:attendance.checkin')->group(function () {
+        Route::get('/attendance/checkin', [AttendanceController::class, 'checkin'])->name('attendance.checkin');
+        Route::post('/attendance/checkin', [AttendanceController::class, 'store'])->name('attendance.store');
+        Route::post('/attendance/{attendance}/checkout', [AttendanceController::class, 'checkout'])->name('attendance.checkout');
+    });
+
+    Route::middleware('permission:attendance.view')->group(function () {
+        Route::get('/attendance/history', [AttendanceController::class, 'index'])->name('attendance.history');
+    });
+
+    Route::middleware('permission:attendance.reports')->group(function () {
+        Route::get('/reports/attendance', [ReportController::class, 'attendance'])->name('reports.attendance');
+    });
+
+    // API Routes for attendance (member search)
+    Route::get('/api/members/search', [AttendanceController::class, 'searchMembers'])->name('api.members.search');
 
 
 
