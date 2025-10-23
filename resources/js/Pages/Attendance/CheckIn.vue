@@ -135,6 +135,49 @@
                   {{ form.errors.customer_phone }}
                 </div>
               </div>
+
+              <div>
+                <label for="daily_plan" class="block text-sm font-medium text-gray-700 mb-2">
+                  Paket Harian <span class="text-red-500">*</span>
+                </label>
+                <select
+                  id="daily_plan"
+                  v-model="form.daily_plan_id"
+                  required
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Pilih Paket</option>
+                  <option v-for="plan in dailyPlans" :key="plan.id" :value="plan.id">
+                    {{ plan.name }} - {{ formatCurrency(plan.price) }}
+                  </option>
+                </select>
+                <div v-if="selectedDailyPlan" class="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
+                  Harga: {{ formatCurrency(selectedDailyPlan.price) }}
+                </div>
+                <div v-if="form.errors.daily_plan_id" class="text-red-500 text-sm mt-1">
+                  {{ form.errors.daily_plan_id }}
+                </div>
+              </div>
+
+              <div>
+                <label for="payment_type_daily" class="block text-sm font-medium text-gray-700 mb-2">
+                  Metode Pembayaran <span class="text-red-500">*</span>
+                </label>
+                <select
+                  id="payment_type_daily"
+                  v-model="form.payment_type"
+                  required
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Pilih Metode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="QR">QR Code</option>
+                  <option value="Transfer">Transfer</option>
+                </select>
+                <div v-if="form.errors.payment_type" class="text-red-500 text-sm mt-1">
+                  {{ form.errors.payment_type }}
+                </div>
+              </div>
             </div>
 
             <!-- Notes -->
@@ -227,7 +270,8 @@ import Button from '@/Components/Button.vue'
 import EmptyState from '@/Components/EmptyState.vue'
 
 const props = defineProps({
-  todayAttendances: Array
+  todayAttendances: Array,
+  dailyPlans: Array
 })
 
 const form = useForm({
@@ -235,6 +279,8 @@ const form = useForm({
   member_id: null,
   customer_name: '',
   customer_phone: '',
+  daily_plan_id: '',
+  payment_type: 'Cash',
   notes: '',
 })
 
@@ -243,10 +289,17 @@ const memberResults = ref([])
 const selectedMember = ref(null)
 let searchTimeout = null
 
+const selectedDailyPlan = computed(() => {
+  if (!form.daily_plan_id) return null
+  return props.dailyPlans?.find(plan => plan.id === form.daily_plan_id)
+})
+
 function resetForm() {
   form.member_id = null
   form.customer_name = ''
   form.customer_phone = ''
+  form.daily_plan_id = ''
+  form.payment_type = 'Cash'
   form.notes = ''
   memberSearch.value = ''
   memberResults.value = []
@@ -310,6 +363,14 @@ function formatTime(datetime) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(value)
 }
 
 function submit() {

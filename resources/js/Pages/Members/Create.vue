@@ -109,26 +109,6 @@
                 </div>
               </div>
 
-              <!-- Tipe Membership -->
-              <div>
-                <label for="membership_type" class="block text-sm font-medium text-gray-700 mb-2">
-                  Tipe Membership <span class="text-red-500">*</span>
-                </label>
-                <select
-                  id="membership_type"
-                  v-model="form.membership_type"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="harian">Harian</option>
-                  <option value="bulanan">Bulanan</option>
-                  <option value="tahunan">Tahunan</option>
-                </select>
-                <div v-if="form.errors.membership_type" class="text-red-500 text-sm mt-1">
-                  {{ form.errors.membership_type }}
-                </div>
-              </div>
-
               <!-- Tanggal Mulai -->
               <div>
                 <label for="membership_start" class="block text-sm font-medium text-gray-700 mb-2">
@@ -161,6 +141,27 @@
                 <p class="text-xs text-gray-500 mt-1">Otomatis dihitung dari paket & tanggal mulai</p>
                 <div v-if="form.errors.membership_end" class="text-red-500 text-sm mt-1">
                   {{ form.errors.membership_end }}
+                </div>
+              </div>
+
+              <!-- Payment Type -->
+              <div v-if="form.membership_package_id">
+                <label for="payment_type" class="block text-sm font-medium text-gray-700 mb-2">
+                  Metode Pembayaran <span class="text-red-500">*</span>
+                </label>
+                <select
+                  id="payment_type"
+                  v-model="form.payment_type"
+                  :required="!!form.membership_package_id"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Pilih Metode</option>
+                  <option value="Cash">Cash</option>
+                  <option value="QR">QR Code</option>
+                  <option value="Transfer">Transfer</option>
+                </select>
+                <div v-if="form.errors.payment_type" class="text-red-500 text-sm mt-1">
+                  {{ form.errors.payment_type }}
                 </div>
               </div>
             </div>
@@ -244,9 +245,9 @@ const form = useForm({
   email: '',
   gender: '',
   membership_package_id: '',
-  membership_type: 'bulanan',
   membership_start: '',
   membership_end: '',
+  payment_type: 'Cash',
   is_active: true,
   notes: '',
 })

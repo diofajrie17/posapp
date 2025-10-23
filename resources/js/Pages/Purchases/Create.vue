@@ -157,32 +157,32 @@
 
                 <div>
                   <InputLabel :for="`quantity_${index}`" value="Qty *" />
-                  <TextInput
+                  <input
                     :id="`quantity_${index}`"
-                    v-model="item.quantity"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    class="w-full"
-                    @input="calculateItemTotal(index)"
+                    :value="formatNumberInput(item.quantity, true)"
+                    @input="e => updateQuantity(index, e.target.value)"
+                    type="text"
+                    inputmode="decimal"
+                    class="w-full rounded-lg border-gray-300"
+                    placeholder="0"
                     required
                   />
                   <InputError :message="form.errors[`items.${index}.quantity`]" />
                   <p v-if="item.baseQuantity && item.unit_conversion > 1" class="text-xs text-blue-600 mt-1">
-                    = {{ item.baseQuantity }} {{ item.baseUnitName }}
+                    = {{ formatNumberInput(item.baseQuantity, true) }} {{ item.baseUnitName }}
                   </p>
                 </div>
 
                 <div>
                   <InputLabel :for="`unit_cost_${index}`" value="Harga/Unit *" />
-                  <TextInput
+                  <input
                     :id="`unit_cost_${index}`"
-                    v-model="item.unit_cost"
-                    type="number"
-                    step="1"
-                    min="0"
-                    class="w-full"
-                    @input="calculateItemTotal(index)"
+                    :value="formatPriceInput(item.unit_cost)"
+                    @input="e => updateUnitCost(index, e.target.value)"
+                    type="text"
+                    inputmode="numeric"
+                    class="w-full rounded-lg border-gray-300"
+                    placeholder="0"
                     required
                   />
                   <InputError :message="form.errors[`items.${index}.unit_cost`]" />
@@ -235,6 +235,88 @@
           </div>
         </Card>
 
+        <!-- Payment Section -->
+        <Card class="mb-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Pembayaran</h3>
+          
+          <div class="mb-4">
+            <label class="flex items-center">
+              <input
+                type="checkbox"
+                v-model="form.mark_as_paid"
+                @change="updatePaymentAmount"
+                class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span class="ml-2 text-sm text-gray-700">Tandai sebagai lunas</span>
+            </label>
+          </div>
+
+          <div v-if="form.mark_as_paid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <InputLabel for="payment_type" value="Metode Pembayaran *" />
+              <select
+                id="payment_type"
+                v-model="form.payment_type"
+                class="w-full rounded-lg border-gray-300"
+                required
+              >
+                <option value="Cash">Cash</option>
+                <option value="QR">QR Code</option>
+                <option value="Transfer">Transfer</option>
+              </select>
+              <InputError :message="form.errors.payment_type" />
+            </div>
+
+            <div>
+              <InputLabel for="payment_date" value="Tanggal Pembayaran *" />
+              <TextInput
+                id="payment_date"
+                v-model="form.payment_date"
+                type="date"
+                class="w-full"
+                required
+              />
+              <InputError :message="form.errors.payment_date" />
+            </div>
+
+            <div>
+              <InputLabel for="payment_amount" value="Jumlah Pembayaran *" />
+              <input
+                id="payment_amount"
+                :value="formatPriceInput(form.payment_amount)"
+                @input="e => form.payment_amount = parsePrice(e.target.value)"
+                type="text"
+                inputmode="numeric"
+                class="w-full rounded-lg border-gray-300"
+                placeholder="0"
+                required
+              />
+              <InputError :message="form.errors.payment_amount" />
+              <p class="text-xs text-gray-500 mt-1">
+                Total pembelian: {{ formatRupiah(totalAmount) }}
+              </p>
+            </div>
+
+            <div>
+              <InputLabel for="payment_notes" value="Catatan Pembayaran" />
+              <textarea
+                id="payment_notes"
+                v-model="form.payment_notes"
+                class="w-full rounded-lg border-gray-300"
+                rows="2"
+                placeholder="Catatan tambahan..."
+              ></textarea>
+              <InputError :message="form.errors.payment_notes" />
+            </div>
+          </div>
+
+          <div v-else class="p-4 bg-yellow-50 rounded-lg">
+            <p class="text-sm text-yellow-800">
+              ⚠️ Pembelian ini akan ditandai sebagai <strong>belum dibayar</strong>. Anda dapat menambahkan pembayaran nanti dari halaman detail pembelian.
+            </p>
+          </div>
+        </Card>
+
         <!-- Submit -->
         <div class="flex justify-end gap-3">
           <Button type="button" :href="route('purchases.index')" variant="secondary">
@@ -274,6 +356,11 @@ const form = useForm({
   purchase_date: new Date().toISOString().split('T')[0],
   items: [createEmptyItem()],
   notes: '',
+  payment_amount: 0,
+  payment_type: 'Cash',
+  payment_date: new Date().toISOString().split('T')[0],
+  payment_notes: '',
+  mark_as_paid: true,
 })
 
 function createEmptyItem() {
@@ -294,6 +381,13 @@ function createEmptyItem() {
 const totalAmount = computed(() => {
   return form.items.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0)
 })
+
+// Auto-update payment amount when total changes and mark_as_paid is checked
+const updatePaymentAmount = () => {
+  if (form.mark_as_paid) {
+    form.payment_amount = totalAmount.value
+  }
+}
 
 const addItem = () => {
   form.items.push(createEmptyItem())
@@ -403,6 +497,9 @@ const calculateItemTotal = (index) => {
   
   item.subtotal = quantity * unitCost
   item.baseQuantity = quantity * conversion
+  
+  // Update payment amount if auto-pay is enabled
+  updatePaymentAmount()
 }
 
 const submitForm = () => {
@@ -415,6 +512,52 @@ const formatRupiah = (value) => {
     currency: 'IDR',
     minimumFractionDigits: 0,
   }).format(value)
+}
+
+const formatPriceInput = (value) => {
+  if (!value || value === 0) return ''
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '')) : value
+  if (isNaN(num)) return ''
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+const parsePrice = (value) => {
+  if (!value) return 0
+  const cleaned = value.replace(/\./g, '')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+const updateUnitCost = (index, value) => {
+  form.items[index].unit_cost = parsePrice(value)
+  calculateItemTotal(index)
+}
+
+const formatNumberInput = (value, allowDecimals = false) => {
+  if (!value || value === 0) return ''
+  const num = typeof value === 'string' ? parseFloat(value.replace(',', '.').replace(/\./g, '')) : value
+  if (isNaN(num)) return ''
+  
+  if (allowDecimals) {
+    const parts = num.toString().split('.')
+    const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    const decimalPart = parts[1] || ''
+    return decimalPart ? `${integerPart},${decimalPart}` : integerPart
+  } else {
+    return Math.floor(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  }
+}
+
+const parseNumber = (value) => {
+  if (!value) return 0
+  const cleaned = value.replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+const updateQuantity = (index, value) => {
+  form.items[index].quantity = parseNumber(value)
+  calculateItemTotal(index)
 }
 </script>
 

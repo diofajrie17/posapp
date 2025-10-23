@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
+use App\Models\PurchasePayment;
 use App\Models\InventoryBatch;
 use App\Models\StockMovement;
 use App\Models\Unit;
@@ -17,7 +18,7 @@ class PurchaseController extends Controller
     public function __construct()
     {
         $this->middleware('permission:purchases.view')->only(['index', 'show']);
-        $this->middleware('permission:purchases.create')->only(['create', 'store']);
+        $this->middleware('permission:purchases.create')->only(['create', 'store', 'storePayment']);
         $this->middleware('permission:purchases.delete')->only(['destroy']);
     }
 
@@ -85,6 +86,10 @@ class PurchaseController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_cost' => 'required|numeric|min:0',
             'notes' => 'nullable|string|max:500',
+            'payment_amount' => 'nullable|numeric|min:0',
+            'payment_type' => 'nullable|required_with:payment_amount|in:Cash,QR,Transfer',
+            'payment_date' => 'nullable|required_with:payment_amount|date',
+            'payment_notes' => 'nullable|string|max:500',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -183,6 +188,20 @@ class PurchaseController extends Controller
                     'moved_at' => now(),
                 ]);
             }
+
+            // Create initial payment if provided
+            if ($request->filled('payment_amount') && $request->payment_amount > 0) {
+                PurchasePayment::create([
+                    'purchase_id' => $purchase->id,
+                    'amount' => $request->payment_amount,
+                    'payment_date' => $request->payment_date ?? now(),
+                    'payment_type' => $request->payment_type,
+                    'notes' => $request->payment_notes,
+                    'created_by' => auth()->id(),
+                ]);
+                
+                // Payment status will be updated automatically via model event
+            }
         });
 
         return redirect()->route('purchases.index')
@@ -197,12 +216,49 @@ class PurchaseController extends Controller
         $purchase->load([
             'items.product:id,name',
             'items.unit:id,name,symbol',
-            'creator:id,name'
+            'creator:id,name',
+            'payments' => function ($query) {
+                $query->with('creator:id,name')->orderBy('payment_date', 'desc');
+            }
         ]);
         
         return Inertia::render('Purchases/Show', [
             'purchase' => $purchase,
         ]);
+    }
+
+    /**
+     * Store a new payment for existing purchase
+     */
+    public function storePayment(Request $request, Purchase $purchase)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_type' => 'required|in:Cash,QR,Transfer',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        // Validate payment amount doesn't exceed remaining
+        $remaining = $purchase->remaining_amount;
+        if ($request->amount > $remaining) {
+            return back()->withErrors([
+                'amount' => "Jumlah pembayaran (Rp " . number_format($request->amount, 0, ',', '.') . 
+                           ") melebihi sisa tagihan (Rp " . number_format($remaining, 0, ',', '.') . ")"
+            ]);
+        }
+
+        PurchasePayment::create([
+            'purchase_id' => $purchase->id,
+            'amount' => $request->amount,
+            'payment_date' => $request->payment_date,
+            'payment_type' => $request->payment_type,
+            'notes' => $request->notes,
+            'created_by' => auth()->id(),
+        ]);
+
+        return redirect()->route('purchases.show', $purchase->id)
+            ->with('message', 'Pembayaran berhasil ditambahkan.');
     }
 
     /**

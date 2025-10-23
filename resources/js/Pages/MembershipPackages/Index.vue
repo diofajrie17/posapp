@@ -65,7 +65,7 @@
               {{ pkg.duration_days }} hari
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              {{ formatCurrency(pkg.price) }}
+              Rp {{ formatPrice(pkg.price) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center">
               <span :class="[
@@ -126,6 +126,7 @@ import Card from '@/Components/Card.vue'
 import DataTable from '@/Components/DataTable.vue'
 import Button from '@/Components/Button.vue'
 import EmptyState from '@/Components/EmptyState.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   packages: Array

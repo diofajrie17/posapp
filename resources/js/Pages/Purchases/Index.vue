@@ -49,12 +49,13 @@
             <th class="px-4 py-3 text-left font-semibold">Tanggal</th>
             <th class="px-4 py-3 text-left font-semibold">Supplier</th>
             <th class="px-4 py-3 text-right font-semibold">Total</th>
+            <th class="px-4 py-3 text-center font-semibold">Status Bayar</th>
             <th class="px-4 py-3 text-center font-semibold">Dibuat Oleh</th>
             <th class="px-4 py-3 text-center font-semibold">Aksi</th>
           </template>
 
           <tr v-if="purchases.data.length === 0">
-            <td colspan="6" class="p-0">
+            <td colspan="7" class="p-0">
               <EmptyState 
                 icon="🛒" 
                 message="Belum ada data pembelian" 
@@ -76,8 +77,33 @@
                 {{ purchase.supplier_phone }}
               </div>
             </td>
-            <td class="px-4 py-3 text-right font-semibold text-green-600">
-              {{ formatRupiah(purchase.total_amount) }}
+            <td class="px-4 py-3 text-right">
+              <div class="font-semibold text-gray-800">
+                {{ formatRupiah(purchase.total_amount) }}
+              </div>
+              <div v-if="purchase.payment_status !== 'paid'" class="text-xs text-gray-500">
+                Dibayar: {{ formatRupiah(purchase.paid_amount || 0) }}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-center">
+              <span 
+                v-if="purchase.payment_status === 'paid'" 
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+              >
+                ✓ Lunas
+              </span>
+              <span 
+                v-else-if="purchase.payment_status === 'partial'" 
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
+              >
+                ⚠ Hutang
+              </span>
+              <span 
+                v-else 
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+              >
+                ✕ Belum Bayar
+              </span>
             </td>
             <td class="px-4 py-3 text-center text-sm text-gray-600">
               {{ purchase.creator?.name }}
@@ -136,6 +162,7 @@ import Button from '@/Components/Button.vue'
 import EmptyState from '@/Components/EmptyState.vue'
 import InputLabel from '@/Components/InputLabel.vue'
 import TextInput from '@/Components/TextInput.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   purchases: Object,
@@ -172,11 +199,7 @@ const formatDate = (date) => {
 }
 
 const formatRupiah = (value) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(value)
+  return 'Rp ' + formatPrice(value || 0)
 }
 </script>
 

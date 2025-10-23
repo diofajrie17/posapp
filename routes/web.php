@@ -135,6 +135,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/purchases/{purchase}', [PurchaseController::class, 'show'])->name('purchases.show');
     });
     
+    Route::middleware('permission:purchases.create')->group(function () {
+        Route::post('/purchases/{purchase}/payments', [PurchaseController::class, 'storePayment'])->name('purchases.payments.store');
+    });
+    
     Route::middleware('permission:purchases.delete')->group(function () {
         Route::delete('/purchases/{purchase}', [PurchaseController::class, 'destroy'])->name('purchases.destroy');
     });

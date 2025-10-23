@@ -109,26 +109,6 @@
                 </div>
               </div>
 
-              <!-- Tipe Membership -->
-              <div>
-                <label for="membership_type" class="block text-sm font-medium text-gray-700 mb-2">
-                  Tipe Membership <span class="text-red-500">*</span>
-                </label>
-                <select
-                  id="membership_type"
-                  v-model="form.membership_type"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="harian">Harian</option>
-                  <option value="bulanan">Bulanan</option>
-                  <option value="tahunan">Tahunan</option>
-                </select>
-                <div v-if="form.errors.membership_type" class="text-red-500 text-sm mt-1">
-                  {{ form.errors.membership_type }}
-                </div>
-              </div>
-
               <!-- Tanggal Mulai -->
               <div>
                 <label for="membership_start" class="block text-sm font-medium text-gray-700 mb-2">
@@ -245,7 +225,6 @@ const form = useForm({
   email: props.member.email || '',
   gender: props.member.gender || '',
   membership_package_id: props.member.membership_package_id || '',
-  membership_type: props.member.membership_type,
   membership_start: props.member.membership_start || '',
   membership_end: props.member.membership_end || '',
   is_active: props.member.is_active,

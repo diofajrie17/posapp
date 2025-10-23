@@ -32,12 +32,13 @@
             </label>
             <input
               id="duration_days"
-              v-model.number="form.duration_days"
-              type="number"
+              v-model="durationFormatter.displayValue.value"
+              @input="durationFormatter.handleInput"
+              type="text"
+              inputmode="numeric"
               required
-              min="1"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-              placeholder="Contoh: 30, 365, 1"
+              placeholder="Contoh: 30"
             />
             <p class="text-xs text-gray-500 mt-1">30 hari = 1 bulan, 365 hari = 1 tahun</p>
             <div v-if="form.errors.duration_days" class="text-red-500 text-sm mt-1">
@@ -52,13 +53,13 @@
             </label>
             <input
               id="price"
-              v-model.number="form.price"
-              type="number"
+              v-model="priceFormatter.displayValue.value"
+              @input="priceFormatter.handleInput"
+              type="text"
+              inputmode="numeric"
               required
-              min="0"
-              step="1000"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-              placeholder="Contoh: 300000"
+              placeholder="Contoh: 300.000"
             />
             <div v-if="form.errors.price" class="text-red-500 text-sm mt-1">
               {{ form.errors.price }}
@@ -124,9 +125,11 @@
 
 <script setup>
 import { useForm } from '@inertiajs/vue3'
+import { watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import Card from '@/Components/Card.vue'
 import Button from '@/Components/Button.vue'
+import { usePriceFormatter, useNumberFormatter } from '@/composables/usePriceFormatter'
 
 const form = useForm({
   name: '',
@@ -134,6 +137,22 @@ const form = useForm({
   price: null,
   description: '',
   is_active: true,
+})
+
+// Price formatter
+const priceFormatter = usePriceFormatter(form.price || 0)
+
+// Duration formatter (integer only)
+const durationFormatter = useNumberFormatter(form.duration_days || 0, false)
+
+// Sync price value
+watch(() => priceFormatter.numericValue.value, (newValue) => {
+  form.price = newValue
+})
+
+// Sync duration value
+watch(() => durationFormatter.numericValue.value, (newValue) => {
+  form.duration_days = newValue
 })
 
 function submit() {

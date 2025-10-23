@@ -49,7 +49,7 @@
               {{ expense.description }}
             </td>
             <td class="px-4 py-3 text-right font-semibold text-red-600">
-              {{ formatRupiah(expense.amount) }}
+              Rp {{ formatPrice(expense.amount) }}
             </td>
             <td class="px-4 py-3 text-gray-600">
               {{ formatDate(expense.date) }}
@@ -87,6 +87,7 @@ import Card from '@/Components/Card.vue'
 import DataTable from '@/Components/DataTable.vue'
 import Button from '@/Components/Button.vue'
 import EmptyState from '@/Components/EmptyState.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   expenses: Array,

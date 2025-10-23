@@ -11,6 +11,9 @@ class Attendance extends Model
 
     protected $fillable = [
         'member_id',
+        'daily_plan_id',
+        'payment_amount',
+        'payment_type',
         'customer_name',
         'customer_phone',
         'check_in_time',
@@ -24,11 +27,17 @@ class Attendance extends Model
         'check_in_time' => 'datetime',
         'check_out_time' => 'datetime',
         'date' => 'date',
+        'payment_amount' => 'decimal:2',
     ];
 
     public function member()
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function dailyPlan()
+    {
+        return $this->belongsTo(MembershipPackage::class, 'daily_plan_id');
     }
 
     public function scopeMemberType($query)

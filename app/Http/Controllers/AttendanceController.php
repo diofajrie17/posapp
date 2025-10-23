@@ -19,13 +19,19 @@ class AttendanceController extends Controller
     public function checkin()
     {
         // Get today's attendances
-        $todayAttendances = Attendance::with('member')
+        $todayAttendances = Attendance::with(['member', 'dailyPlan'])
             ->today()
             ->latest('check_in_time')
             ->get();
 
+        // Get daily plans (duration_days = 1) for pelanggan harian
+        $dailyPlans = \App\Models\MembershipPackage::active()
+            ->where('duration_days', 1)
+            ->get();
+
         return Inertia::render('Attendance/CheckIn', [
-            'todayAttendances' => $todayAttendances
+            'todayAttendances' => $todayAttendances,
+            'dailyPlans' => $dailyPlans
         ]);
     }
 
@@ -36,6 +42,8 @@ class AttendanceController extends Controller
             'member_id' => 'required_if:type,member|nullable|exists:members,id',
             'customer_name' => 'required_if:type,daily|nullable|string|max:255',
             'customer_phone' => 'required_if:type,daily|nullable|string|max:255',
+            'daily_plan_id' => 'required_if:type,daily|nullable|exists:membership_packages,id',
+            'payment_type' => 'required_if:type,daily|nullable|in:Cash,QR,Transfer',
             'notes' => 'nullable|string',
         ]);
 
@@ -57,6 +65,24 @@ class AttendanceController extends Controller
         } else {
             $data['customer_name'] = $validated['customer_name'];
             $data['customer_phone'] = $validated['customer_phone'];
+            $data['daily_plan_id'] = $validated['daily_plan_id'];
+            $data['payment_type'] = $validated['payment_type'];
+            
+            // Get daily plan to retrieve price
+            $dailyPlan = \App\Models\MembershipPackage::find($validated['daily_plan_id']);
+            $data['payment_amount'] = $dailyPlan->price;
+            
+            // Create membership payment record for daily customer
+            \App\Models\MembershipPayment::create([
+                'membership_package_id' => $validated['daily_plan_id'],
+                'customer_name' => $validated['customer_name'],
+                'customer_phone' => $validated['customer_phone'],
+                'type' => 'daily',
+                'payment_type' => $validated['payment_type'],
+                'amount' => $dailyPlan->price,
+                'date' => now()->toDateString(),
+                'notes' => 'Pembayaran pelanggan harian',
+            ]);
         }
 
         Attendance::create($data);
@@ -79,7 +105,7 @@ class AttendanceController extends Controller
 
     public function index(Request $request)
     {
-        $query = Attendance::with('member');
+        $query = Attendance::with(['member', 'dailyPlan']);
 
         // Filter by date range
         if ($request->start_date && $request->end_date) {

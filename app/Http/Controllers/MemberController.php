@@ -68,7 +68,10 @@ class MemberController extends Controller
 
     public function create()
     {
-        $packages = \App\Models\MembershipPackage::active()->get();
+        // Exclude daily plans (duration_days = 1) from member registration
+        $packages = \App\Models\MembershipPackage::active()
+            ->where('duration_days', '>', 1)
+            ->get();
         
         return Inertia::render('Members/Create', [
             'packages' => $packages
@@ -83,11 +86,11 @@ class MemberController extends Controller
             'email' => 'nullable|email|max:255',
             'gender' => 'nullable|in:male,female',
             'membership_package_id' => 'nullable|exists:membership_packages,id',
-            'membership_type' => 'required|in:bulanan,tahunan,harian',
             'membership_start' => 'nullable|date',
             'membership_end' => 'nullable|date|after_or_equal:membership_start',
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
+            'payment_type' => 'required_with:membership_package_id|nullable|in:Cash,QR,Transfer',
         ]);
 
         // Auto-calculate membership_end if package is selected and start date is provided
@@ -98,14 +101,32 @@ class MemberController extends Controller
                 ->format('Y-m-d');
         }
 
-        Member::create($validated);
+        $member = Member::create($validated);
+
+        // Create membership payment record if package is selected
+        if ($validated['membership_package_id']) {
+            $package = \App\Models\MembershipPackage::find($validated['membership_package_id']);
+            
+            \App\Models\MembershipPayment::create([
+                'member_id' => $member->id,
+                'membership_package_id' => $validated['membership_package_id'],
+                'type' => 'registration',
+                'payment_type' => $validated['payment_type'] ?? 'Cash',
+                'amount' => $package->price,
+                'date' => $validated['membership_start'] ?? now()->toDateString(),
+                'notes' => 'Pembayaran registrasi member',
+            ]);
+        }
 
         return redirect()->route('members.index')->with('message', 'Member berhasil ditambahkan');
     }
 
     public function edit(Member $member)
     {
-        $packages = \App\Models\MembershipPackage::active()->get();
+        // Exclude daily plans (duration_days = 1) from member registration
+        $packages = \App\Models\MembershipPackage::active()
+            ->where('duration_days', '>', 1)
+            ->get();
         
         return Inertia::render('Members/Edit', [
             'member' => $member->load('membershipPackage'),
@@ -121,7 +142,6 @@ class MemberController extends Controller
             'email' => 'nullable|email|max:255',
             'gender' => 'nullable|in:male,female',
             'membership_package_id' => 'nullable|exists:membership_packages,id',
-            'membership_type' => 'required|in:bulanan,tahunan,harian',
             'membership_start' => 'nullable|date',
             'membership_end' => 'nullable|date|after_or_equal:membership_start',
             'is_active' => 'boolean',

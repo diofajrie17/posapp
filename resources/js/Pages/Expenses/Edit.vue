@@ -21,13 +21,13 @@
         <div>
           <label for="amount" class="block font-semibold mb-1">Jumlah (Rp)</label>
           <input
-            type="number"
+            type="text"
             id="amount"
-            v-model.number="form.amount"
+            v-model="amountFormatter.displayValue.value"
+            @input="amountFormatter.handleInput"
+            inputmode="numeric"
             class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-400 focus:outline-none"
             :class="{ 'border-red-500': errors.amount }"
-            min="0"
-            step="1000"
           />
           <p v-if="errors.amount" class="text-red-500 text-sm mt-1">{{ errors.amount }}</p>
         </div>
@@ -64,8 +64,9 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
+import { usePriceFormatter } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   expense: Object
@@ -75,6 +76,14 @@ const form = reactive({
   description: props.expense.description,
   amount: props.expense.amount,
   date: props.expense.date
+})
+
+// Amount formatter
+const amountFormatter = usePriceFormatter(form.amount)
+
+// Sync amount value
+watch(() => amountFormatter.numericValue.value, (newValue) => {
+  form.amount = newValue
 })
 
 const errors = reactive({})

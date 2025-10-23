@@ -105,23 +105,26 @@
                 </div>
                 <div>
                   <InputLabel :for="`quantity_${idx}`" value="Jumlah *" />
-                  <TextInput
+                  <input
                     :id="`quantity_${idx}`"
-                    v-model.number="item.quantity"
-                    type="number"
-                    min="1"
-                    class="w-full"
-                    placeholder="Qty"
+                    :value="formatNumberInput(item.quantity)"
+                    @input="e => updateQuantity(idx, e.target.value)"
+                    type="text"
+                    inputmode="numeric"
+                    class="w-full rounded-lg border-gray-300"
+                    placeholder="0"
                   />
                 </div>
                 <div>
                   <InputLabel :for="`price_${idx}`" value="Harga Satuan *" />
-                  <TextInput
+                  <input
                     :id="`price_${idx}`"
-                    v-model.number="item.price_each"
-                    type="number"
-                    class="w-full"
-                    placeholder="Harga"
+                    :value="formatPriceInput(item.price_each)"
+                    @input="e => updatePrice(idx, e.target.value)"
+                    type="text"
+                    inputmode="numeric"
+                    class="w-full rounded-lg border-gray-300"
+                    placeholder="0"
                   />
                 </div>
                 <div>
@@ -153,11 +156,14 @@
             </div>
             <div>
               <InputLabel for="discount_value" value="Nilai Diskon" />
-              <TextInput
+              <input
                 id="discount_value"
-                v-model.number="form.discount_value"
-                type="number"
-                class="w-full"
+                :value="formatPriceInput(form.discount_value)"
+                @input="e => updateDiscountValue(e.target.value)"
+                type="text"
+                inputmode="numeric"
+                class="w-full rounded-lg border-gray-300"
+                placeholder="0"
               />
             </div>
             <div>
@@ -171,11 +177,14 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
               <InputLabel for="paid_amount" value="Dibayar (Cash)" />
-              <TextInput
+              <input
                 id="paid_amount"
-                v-model.number="form.paid_amount"
-                type="number"
-                class="w-full"
+                :value="formatPriceInput(form.paid_amount)"
+                @input="e => updatePaidAmount(e.target.value)"
+                type="text"
+                inputmode="numeric"
+                class="w-full rounded-lg border-gray-300"
+                placeholder="0"
               />
             </div>
             <div>
@@ -324,6 +333,50 @@ function formatRupiah(value) {
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(value);
+}
+
+function formatPriceInput(value) {
+  if (!value || value === 0) return ''
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '')) : value
+  if (isNaN(num)) return ''
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function parsePrice(value) {
+  if (!value) return 0
+  const cleaned = value.replace(/\./g, '')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+function updatePrice(index, value) {
+  form.items[index].price_each = parsePrice(value)
+}
+
+function updateDiscountValue(value) {
+  form.discount_value = parsePrice(value)
+}
+
+function updatePaidAmount(value) {
+  form.paid_amount = parsePrice(value)
+}
+
+function formatNumberInput(value) {
+  if (!value || value === 0) return ''
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '')) : value
+  if (isNaN(num)) return ''
+  return Math.floor(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function parseNumber(value) {
+  if (!value) return 0
+  const cleaned = value.replace(/\./g, '')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+function updateQuantity(index, value) {
+  form.items[index].quantity = parseNumber(value)
 }
 
 function submit() {

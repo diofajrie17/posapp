@@ -51,6 +51,7 @@ class ProductController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'product_code' => 'required|string|max:255|unique:products,product_code',
             'price' => 'required|numeric|min:0',
             'unit_id' => 'required|exists:units,id',
             'unit_quantity' => 'nullable|numeric|min:0.0001',
@@ -64,7 +65,7 @@ class ProductController extends Controller
             return back()->withErrors(['unit_id' => 'Products can only use base units. Please select a base unit.']);
         }
 
-        $data = $request->only(['name', 'price', 'unit_id', 'unit_quantity', 'base_unit_id', 'category_id']);
+        $data = $request->only(['name', 'product_code', 'price', 'unit_id', 'unit_quantity', 'base_unit_id', 'category_id']);
         
         // Set defaults for new products
         $data['stock'] = 0;
@@ -97,6 +98,7 @@ class ProductController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'product_code' => 'required|string|max:255|unique:products,product_code,' . $product->id,
             'stock' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
             'unit_id' => 'required|exists:units,id',
@@ -111,7 +113,7 @@ class ProductController extends Controller
             return back()->withErrors(['unit_id' => 'Products can only use base units. Please select a base unit.']);
         }
 
-        $data = $request->only(['name', 'stock', 'price', 'unit_id', 'unit_quantity', 'base_unit_id', 'category_id']);
+        $data = $request->only(['name', 'product_code', 'stock', 'price', 'unit_id', 'unit_quantity', 'base_unit_id', 'category_id']);
         
         // Don't allow manual cost_price updates - it's managed by purchases
         // Keep existing cost_price from database

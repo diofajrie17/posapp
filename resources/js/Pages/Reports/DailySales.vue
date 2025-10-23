@@ -145,6 +145,7 @@
 import { router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   date: String,
@@ -164,7 +165,7 @@ const avgPerTrx = computed(() => {
 })
 
 function rupiah(n) {
-  return 'Rp ' + Number(n || 0).toLocaleString('id-ID')
+  return 'Rp ' + formatPrice(n || 0)
 }
 
 function dt(s) {

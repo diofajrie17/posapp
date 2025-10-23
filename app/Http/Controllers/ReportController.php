@@ -118,9 +118,10 @@ class ReportController extends Controller
         // Sales Transactions (Income)
         $salesSummary = SalesTransaction::selectRaw('
                 COUNT(*) as trx_count,
-                SUM(total_amount) as gross_total,
-                SUM(subtotal_amount) as subtotal_total,
-                SUM(discount_amount) as discount_total
+                COALESCE(SUM(total_amount), 0) as gross_total,
+                COALESCE(SUM(subtotal_amount), 0) as subtotal_total,
+                COALESCE(SUM(discount_amount), 0) as discount_total,
+                COALESCE(SUM(cogs_amount), 0) as total_cogs
             ')
             ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
             ->first();
@@ -146,7 +147,7 @@ class ReportController extends Controller
         // Regular Expenses (Pengeluaran)
         $expensesSummary = Expense::selectRaw('
                 COUNT(*) as count,
-                SUM(amount) as total
+                COALESCE(SUM(amount), 0) as total
             ')
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->first();
@@ -164,7 +165,7 @@ class ReportController extends Controller
         // Ads Expenses (Separate Expense Category)
         $adsSummary = Ad::selectRaw('
                 COUNT(*) as count,
-                SUM(amount) as total
+                COALESCE(SUM(amount), 0) as total
             ')
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->first();
@@ -180,7 +181,7 @@ class ReportController extends Controller
         // Facility Income (Separate Income Category)
         $facilitySummary = Facility::selectRaw('
                 COUNT(*) as count,
-                SUM(amount) as total
+                COALESCE(SUM(amount), 0) as total
             ')
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->first();
@@ -190,6 +191,30 @@ class ReportController extends Controller
                 DB::raw('SUM(amount) as total'))
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->groupBy('type')
+            ->orderByDesc('total')
+            ->get();
+
+        // Membership Payments (Income from member registrations and daily plans)
+        $membershipSummary = \App\Models\MembershipPayment::selectRaw('
+                COUNT(*) as count,
+                COALESCE(SUM(amount), 0) as total
+            ')
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->first();
+
+        $membershipByType = \App\Models\MembershipPayment::select('type',
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(amount) as total'))
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->groupBy('type')
+            ->orderByDesc('total')
+            ->get();
+
+        $membershipByPayment = \App\Models\MembershipPayment::select('payment_type',
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(amount) as total'))
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->groupBy('payment_type')
             ->orderByDesc('total')
             ->get();
 
@@ -205,9 +230,19 @@ class ReportController extends Controller
             ->get();
 
         // Calculate totals for profit/loss
-        $totalIncome = ($salesSummary->gross_total ?? 0) + ($facilitySummary->total ?? 0);
-        $totalExpenses = ($expensesSummary->total ?? 0) + ($adsSummary->total ?? 0);
-        $netProfit = $totalIncome - $totalExpenses;
+        $salesTotal = $salesSummary ? (float)($salesSummary->gross_total ?? 0) : 0;
+        $facilityTotal = $facilitySummary ? (float)($facilitySummary->total ?? 0) : 0;
+        $membershipTotal = $membershipSummary ? (float)($membershipSummary->total ?? 0) : 0;
+        
+        $totalRevenue = $salesTotal + $facilityTotal + $membershipTotal;
+        $totalCOGS = $salesSummary ? (float)($salesSummary->total_cogs ?? 0) : 0;
+        $grossProfit = $totalRevenue - $totalCOGS;
+        
+        $expensesTotal = $expensesSummary ? (float)($expensesSummary->total ?? 0) : 0;
+        $adsTotal = $adsSummary ? (float)($adsSummary->total ?? 0) : 0;
+        $totalExpenses = $expensesTotal + $adsTotal;
+        
+        $netProfit = $grossProfit - $totalExpenses;
 
         return Inertia::render('Reports/Comprehensive', [
             'filters' => [
@@ -231,9 +266,16 @@ class ReportController extends Controller
                 'summary' => $facilitySummary,
                 'by_type' => $facilityByType,
             ],
+            'memberships' => [
+                'summary' => $membershipSummary,
+                'by_type' => $membershipByType,
+                'by_payment' => $membershipByPayment,
+            ],
             'top_products' => $topProducts,
             'totals' => [
-                'income' => $totalIncome,
+                'revenue' => $totalRevenue,
+                'cogs' => $totalCOGS,
+                'gross_profit' => $grossProfit,
                 'expenses' => $totalExpenses,
                 'net_profit' => $netProfit,
             ],

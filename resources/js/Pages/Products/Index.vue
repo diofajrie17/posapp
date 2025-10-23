@@ -18,6 +18,7 @@
       <Card>
         <DataTable>
           <template #header>
+            <th class="px-4 py-3 text-left font-semibold">Kode Produk</th>
             <th class="px-4 py-3 text-left font-semibold">Nama Produk</th>
             <th class="px-4 py-3 text-left font-semibold">Kategori</th>
             <th class="px-4 py-3 text-center font-semibold">Stok</th>
@@ -28,7 +29,7 @@
           </template>
 
           <tr v-if="products.length === 0">
-            <td colspan="7" class="p-0">
+            <td colspan="8" class="p-0">
               <EmptyState 
                 icon="📦" 
                 message="Belum ada produk" 
@@ -42,6 +43,9 @@
             :key="p.id"
             class="hover:bg-gray-50 transition-colors"
           >
+            <td class="px-4 py-3 text-gray-600 font-mono text-sm">
+              {{ p.product_code }}
+            </td>
             <td class="px-4 py-3 font-medium text-gray-800">
               {{ p.name }}
             </td>
@@ -66,10 +70,10 @@
               </span>
             </td>
             <td class="px-4 py-3 text-right font-semibold text-indigo-600">
-              {{ formatRupiah(p.price) }}
+              Rp {{ formatPrice(p.price) }}
             </td>
             <td class="px-4 py-3 text-right text-sm text-gray-600">
-              {{ p.average_cost ? formatRupiah(p.average_cost) : '-' }}
+              {{ p.average_cost ? 'Rp ' + formatPrice(p.average_cost) : '-' }}
             </td>
             <td class="px-4 py-3 text-gray-600">
               <span v-if="getUnitDisplay(p)" class="px-2 py-1 text-xs rounded-full font-medium bg-gray-100 text-gray-700">
@@ -239,6 +243,7 @@ import Modal from '@/Components/Modal.vue'
 import InputLabel from '@/Components/InputLabel.vue'
 import TextInput from '@/Components/TextInput.vue'
 import InputError from '@/Components/InputError.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   products: Array,

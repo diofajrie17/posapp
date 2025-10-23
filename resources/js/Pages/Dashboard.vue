@@ -112,6 +112,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { computed } from 'vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   today: String,
@@ -124,7 +125,7 @@ const props = defineProps({
 })
 
 function rupiah(n) {
-  return 'Rp ' + Number(n || 0).toLocaleString('id-ID')
+  return 'Rp ' + formatPrice(n || 0)
 }
 
 function formatDateTime(s) {
