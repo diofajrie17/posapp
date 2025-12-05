@@ -3,13 +3,11 @@
 namespace App\Http\Controllers;
 
 use Inertia\Inertia;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use App\Models\Member;
-use App\Models\Product;
-use App\Models\SalesItem;
 use App\Models\SalesTransaction;
 use App\Models\Expense;
+use App\Models\Attendance;
 
 
 class DashboardController extends Controller
@@ -47,37 +45,23 @@ class DashboardController extends Controller
             ->whereDate('membership_end', '>=', $today)
             ->count();
 
-        // --- Member akan expired H-5 ---
-        $expiringSoon = Member::where('is_active', true)
-            ->whereDate('membership_end', $today->copy()->addDays(5))
-            ->count();
+        // --- Member akan expired (dalam 7 hari ke depan) ---
+        $expiringMembers = Member::where('is_active', true)
+            ->where('membership_end', '>=', $today)
+            ->where('membership_end', '<=', $today->copy()->addDays(7))
+            ->orderBy('membership_end')
+            ->get(['id', 'full_name', 'phone', 'membership_end']);
 
-        // --- 5 Produk Terlaris (hari ini, berdasarkan omzet) ---
-        $topProducts = SalesItem::select('product_id',
-                DB::raw('SUM(quantity) as qty'),
-                DB::raw('SUM(quantity * price_each) as gross'))
-            ->whereHas('transaction', fn($q) => $q->whereBetween('date_time', [$today, $tomorrow]))
-            ->with('product:id,name,unit')
-            ->groupBy('product_id')
-            ->orderByDesc('gross')
-            ->limit(5)
-            ->get();
+        // --- Member aktif yang akan expired (untuk count) ---
+        $expiringSoonCount = $expiringMembers->count();
 
-        // --- 10 Transaksi Terakhir (hari ini) ---
-        $recentTransactions = SalesTransaction::with('member:id,full_name')
-            ->whereBetween('date_time', [$today, $tomorrow])
-            ->orderByDesc('date_time')
-            ->limit(10)
-            ->get(['id','member_id','is_daily_guest','payment_type','total_amount','date_time']);
-
-        // --- Breakdown metode pembayaran (hari ini) ---
-        $paymentBreakdown = SalesTransaction::select('payment_type',
-                DB::raw('COUNT(*) as count'),
-                DB::raw('SUM(total_amount) as total'))
-            ->whereBetween('date_time', [$today, $tomorrow])
-            ->groupBy('payment_type')
-            ->orderByDesc('total')
-            ->get();
+        // --- Member yang check-in hari ini ---
+        $todayCheckIns = Attendance::whereDate('date', $today)
+            ->where('type', 'member')
+            ->with('member:id,full_name,phone')
+            ->orderByDesc('check_in_time')
+            ->limit(20)
+            ->get(['id', 'member_id', 'customer_name', 'check_in_time', 'check_out_time', 'date']);
 
         return Inertia::render('Dashboard', [
             'today'             => $today->toDateString(),
@@ -89,11 +73,10 @@ class DashboardController extends Controller
             ],
             'members'           => [
                 'active'      => (int) $activeMembers,
-                'expiringH5'  => (int) $expiringSoon,
+                'expiring_count' => (int) $expiringSoonCount,
+                'expiring_list' => $expiringMembers,
             ],
-            'topProducts'       => $topProducts,
-            'recentTransactions'=> $recentTransactions,
-            'paymentBreakdown'  => $paymentBreakdown,
+            'checkIns'          => $todayCheckIns,
         ]);
     }
 }

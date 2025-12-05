@@ -156,6 +156,13 @@
                   Edit
                 </Button>
                 <Button
+                  variant="primary"
+                  size="sm"
+                  :href="`/members/${member.id}/renew`"
+                >
+                  Perpanjang
+                </Button>
+                <Button
                   variant="danger"
                   size="sm"
                   as="button"

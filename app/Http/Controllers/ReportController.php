@@ -55,11 +55,14 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
-        // Daftar transaksi (untuk tabel)
-        $transactions = SalesTransaction::with('member:id,full_name')
+        // Daftar transaksi (untuk tabel) dengan items detail
+        $transactions = SalesTransaction::with([
+                'member:id,full_name',
+                'items.product:id,name,unit'
+            ])
             ->whereDate('date_time', $date)
             ->orderBy('date_time','desc')
-            ->get(['id','member_id','is_daily_guest','payment_type','total_amount','date_time']);
+            ->get(['id','member_id','is_daily_guest','payment_type','subtotal_amount','discount_amount','total_amount','cogs_amount','date_time']);
 
 
         $sumSubtotal = \App\Models\SalesTransaction::whereDate('date_time', $date)
@@ -67,6 +70,7 @@ class ReportController extends Controller
 
         $sumDiscount = \App\Models\SalesTransaction::whereDate('date_time', $date)
     ->sum('discount_amount');
+
         return Inertia::render('Reports/DailySales', [
             'date'         => $date,
             'summary'      => [
@@ -76,6 +80,8 @@ class ReportController extends Controller
             'byPayment'    => $byPayment,
             'topProducts'  => $topProducts,
             'transactions' => $transactions,
+            'sumSubtotal'  => $sumSubtotal,
+            'sumDiscount'  => $sumDiscount,
         ]);
     }
 
@@ -126,14 +132,32 @@ class ReportController extends Controller
             ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
             ->first();
 
+        // Get sales by date with product details
         $salesByDate = SalesTransaction::selectRaw('
                 DATE(date_time) as date,
                 COUNT(*) as trx_count,
-                SUM(total_amount) as total
+                SUM(total_amount) as total,
+                SUM(cogs_amount) as total_cogs
             ')
             ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
             ->groupBy(DB::raw('DATE(date_time)'))
             ->orderBy('date')
+            ->get();
+
+        // Get product sales per day with details (include product category)
+        $productSalesByDate = SalesItem::selectRaw('
+                DATE(sales_transactions.date_time) as date,
+                sales_items.product_id,
+                SUM(sales_items.quantity) as total_qty,
+                SUM(sales_items.quantity * sales_items.price_each) as total_revenue,
+                SUM(sales_items.quantity * sales_items.unit_cogs) as total_cogs
+            ')
+            ->join('sales_transactions', 'sales_items.transaction_id', '=', 'sales_transactions.id')
+            ->whereBetween(DB::raw('DATE(sales_transactions.date_time)'), [$dateFrom, $dateTo])
+            ->groupBy('date', 'sales_items.product_id')
+            ->with(['product:id,name,unit,category_id', 'product.category:id,name'])
+            ->orderBy('date')
+            ->orderByDesc('total_revenue')
             ->get();
 
         $salesByPayment = SalesTransaction::select('payment_type',
@@ -218,15 +242,42 @@ class ReportController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        // Top Products
+        // Top Products with HPP calculation
         $topProducts = SalesItem::select('product_id',
                 DB::raw('SUM(quantity) as qty'),
-                DB::raw('SUM(quantity * price_each) as gross'))
+                DB::raw('SUM(quantity * price_each) as gross'),
+                DB::raw('SUM(quantity * unit_cogs) as total_cogs'))
             ->whereHas('transaction', fn($q) => $q->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo]))
             ->with('product:id,name,unit')
             ->groupBy('product_id')
             ->orderByDesc('gross')
             ->limit(10)
+            ->get();
+
+        // Get detailed sales for CSV format view
+        $detailedSales = SalesTransaction::with('member:id,full_name')
+            ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
+            ->orderBy('date_time')
+            ->get();
+
+        // Get detailed expenses for CSV format view
+        $detailedExpenses = Expense::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
+        // Get detailed ads for CSV format view
+        $detailedAds = Ad::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
+        // Get detailed facilities for CSV format view
+        $detailedFacilities = Facility::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
+        // Get detailed memberships for CSV format view
+        $detailedMemberships = \App\Models\MembershipPayment::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
             ->get();
 
         // Calculate totals for profit/loss
@@ -252,6 +303,7 @@ class ReportController extends Controller
             'sales' => [
                 'summary' => $salesSummary,
                 'by_date' => $salesByDate,
+                'product_by_date' => $productSalesByDate,
                 'by_payment' => $salesByPayment,
             ],
             'expenses' => [
@@ -272,6 +324,13 @@ class ReportController extends Controller
                 'by_payment' => $membershipByPayment,
             ],
             'top_products' => $topProducts,
+            'detailed_data' => [
+                'sales' => $detailedSales,
+                'expenses' => $detailedExpenses,
+                'ads' => $detailedAds,
+                'facilities' => $detailedFacilities,
+                'memberships' => $detailedMemberships,
+            ],
             'totals' => [
                 'revenue' => $totalRevenue,
                 'cogs' => $totalCOGS,

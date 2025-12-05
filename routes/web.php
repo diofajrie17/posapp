@@ -16,7 +16,15 @@ use App\Http\Controllers\AdController;
 use App\Http\Controllers\FacilityController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\MembershipPackageController;
-use App\Http\Controllers\AttendanceController;    
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AdminController;    
+use App\Http\Controllers\Kelas\KelasController;
+use App\Http\Controllers\Kelas\KelasRegistrationController;
+use App\Http\Controllers\Kelas\KelasPaymentController;
+use App\Http\Controllers\Kelas\KelasExpenseController;
+use App\Http\Controllers\Kelas\KelasReportController;
+use App\Http\Controllers\Kelas\KelasMemberController;
+use App\Http\Controllers\Kelas\KelasCheckinController;
 
 
 
@@ -53,12 +61,19 @@ Route::middleware('auth')->group(function () {
         
         // Inventory movements (moved from StockController)
         Route::get('/inventory/movements', [ProductController::class, 'movements'])->name('stock.movements');
-    });
+        
+        // Admin Panel - User Management
+        Route::get('/admin/users', [AdminController::class, 'index'])->name('admin.users.index');
+        Route::get('/admin/users/create', [AdminController::class, 'create'])->name('admin.users.create');
+        Route::post('/admin/users', [AdminController::class, 'store'])->name('admin.users.store');
+        Route::get('/admin/users/{user}/edit', [AdminController::class, 'edit'])->name('admin.users.edit');
+        Route::put('/admin/users/{user}', [AdminController::class, 'update'])->name('admin.users.update');
+        Route::delete('/admin/users/{user}', [AdminController::class, 'destroy'])->name('admin.users.destroy');
+        Route::get('/admin/users/{user}/transactions', [AdminController::class, 'userTransactions'])->name('admin.users.transactions');
+        Route::get('/admin/users/{user}/permissions', [AdminController::class, 'showPermissions'])->name('admin.users.permissions');
+        Route::post('/admin/users/{user}/permissions', [AdminController::class, 'updatePermissions'])->name('admin.users.update-permissions');
     });
 
-    Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    });
     // Kasir + Admin
     Route::middleware('permission:products.view')->group(function () {
         Route::get('/products', [ProductController::class, 'index'])->name('products.index');
@@ -155,6 +170,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('permission:members.update')->group(function () {
         Route::get('/members/{member}/edit', [MemberController::class, 'edit'])->name('members.edit');
         Route::put('/members/{member}', [MemberController::class, 'update'])->name('members.update');
+        Route::get('/members/{member}/renew', [MemberController::class, 'renew'])->name('members.renew');
+        Route::post('/members/{member}/renew', [MemberController::class, 'processRenewal'])->name('members.renew.process');
     });
 
     Route::middleware('permission:members.delete')->group(function () {
@@ -198,6 +215,53 @@ Route::middleware('auth')->group(function () {
     // API Routes for attendance (member search)
     Route::get('/api/members/search', [AttendanceController::class, 'searchMembers'])->name('api.members.search');
 
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Kelas Module
+    Route::prefix('kelas')->group(function () {
+        // Specific routes FIRST (before wildcard routes)
+        Route::get('/', [KelasController::class, 'index'])->middleware('permission:kelas.view')->name('kelas.index');
+        Route::get('/create', [KelasController::class, 'create'])->middleware('permission:kelas.manage')->name('kelas.create');
+        Route::post('/', [KelasController::class, 'store'])->middleware('permission:kelas.manage')->name('kelas.store');
+        
+        // Registrations
+        Route::get('/registrations', [KelasRegistrationController::class, 'index'])->middleware('permission:kelas.registration.manage')->name('kelas.registrations.index');
+        Route::post('/registrations', [KelasRegistrationController::class, 'store'])->middleware('permission:kelas.registration.manage')->name('kelas.registrations.store');
+        Route::delete('/registrations/{registration}', [KelasRegistrationController::class, 'destroy'])->middleware('permission:kelas.registration.manage')->name('kelas.registrations.destroy');
+
+        // Payments
+        Route::get('/payments', [KelasPaymentController::class, 'index'])->middleware('permission:kelas.payment.manage')->name('kelas.payments.index');
+        Route::post('/payments', [KelasPaymentController::class, 'store'])->middleware('permission:kelas.payment.manage')->name('kelas.payments.store');
+
+        // Expenses
+        Route::get('/expenses', [KelasExpenseController::class, 'index'])->middleware('permission:kelas.expense.manage')->name('kelas.expenses.index');
+        Route::post('/expenses', [KelasExpenseController::class, 'store'])->middleware('permission:kelas.expense.manage')->name('kelas.expenses.store');
+
+        // Reports
+        Route::get('/reports', [KelasReportController::class, 'index'])->middleware('permission:kelas.report.view')->name('kelas.reports.index');
+
+        // Kelas Members
+        Route::get('/members', [KelasMemberController::class, 'index'])->middleware('permission:kelas.registration.manage')->name('kelas.members.index');
+        Route::get('/members/create', [KelasMemberController::class, 'create'])->middleware('permission:kelas.registration.manage')->name('kelas.members.create');
+        Route::post('/members', [KelasMemberController::class, 'store'])->middleware('permission:kelas.registration.manage')->name('kelas.members.store');
+        Route::get('/members/{member}', [KelasMemberController::class, 'show'])->middleware('permission:kelas.registration.manage')->name('kelas.members.show');
+        Route::get('/members/{member}/edit', [KelasMemberController::class, 'edit'])->middleware('permission:kelas.registration.manage')->name('kelas.members.edit');
+        Route::put('/members/{member}', [KelasMemberController::class, 'update'])->middleware('permission:kelas.registration.manage')->name('kelas.members.update');
+        Route::delete('/members/{member}', [KelasMemberController::class, 'destroy'])->middleware('permission:kelas.registration.manage')->name('kelas.members.destroy');
+
+        // Checkin/Attendance
+        Route::get('/checkin', [KelasCheckinController::class, 'index'])->name('kelas.checkin.index');
+        Route::post('/checkin', [KelasCheckinController::class, 'store'])->name('kelas.checkin.store');
+        Route::put('/checkin/{attendance}/checkout', [KelasCheckinController::class, 'checkout'])->name('kelas.checkin.checkout');
+        Route::get('/checkin/history', [KelasCheckinController::class, 'history'])->name('kelas.checkin.history');
+        Route::get('/checkin/search-members', [KelasCheckinController::class, 'searchMembers'])->name('kelas.checkin.search-members');
+        
+        // Wildcard routes LAST (after all specific routes)
+        Route::get('/{kelas}', [KelasController::class, 'show'])->middleware('permission:kelas.view')->name('kelas.show');
+        Route::get('/{kelas}/edit', [KelasController::class, 'edit'])->middleware('permission:kelas.manage')->name('kelas.edit');
+        Route::put('/{kelas}', [KelasController::class, 'update'])->middleware('permission:kelas.manage')->name('kelas.update');
+        Route::delete('/{kelas}', [KelasController::class, 'destroy'])->middleware('permission:kelas.manage')->name('kelas.destroy');
+    });
+});
 
 require __DIR__.'/auth.php';

@@ -5,6 +5,10 @@
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
         <h1 class="text-3xl font-bold text-gray-800">Laporan Komprehensif</h1>
         <div class="flex gap-3">
+          <button 
+            @click="showDetailedReport = !showDetailedReport"
+            class="px-4 py-2 border border-green-600 text-green-700 rounded font-semibold text-sm hover:bg-green-50 transition"
+          >🔍 Cek Laporan</button>
           <a
             :href="route('reports.comprehensive.export', { date_from: filters.date_from, date_to: filters.date_to })"
             class="px-4 py-2 border border-gray-400 text-gray-700 rounded font-semibold text-sm hover:bg-gray-100 transition"
@@ -162,11 +166,31 @@
           <p class="text-xs text-gray-600">Revenue</p>
         </div>
         <div class="card text-center">
+          <h3 class="text-sm font-semibold text-emerald-600 mb-2">Pendapatan Cash</h3>
+          <p class="text-xl font-bold text-emerald-700">{{ rupiah(totalCash) }}</p>
+          <p class="text-xs text-gray-600">Cash</p>
+        </div>
+        <div class="card text-center">
+          <h3 class="text-sm font-semibold text-purple-600 mb-2">Pendapatan QR</h3>
+          <p class="text-xl font-bold text-purple-700">{{ rupiah(totalQr) }}</p>
+          <p class="text-xs text-gray-600">QR</p>
+        </div>
+        <div class="card text-center">
+          <h3 class="text-sm font-semibold text-indigo-600 mb-2">Pendapatan Transfer</h3>
+          <p class="text-xl font-bold text-indigo-700">{{ rupiah(totalTransfer) }}</p>
+          <p class="text-xs text-gray-600">Transfer</p>
+        </div>
+        <div v-if="isCashier" class="card text-center">
+          <h3 class="text-sm font-semibold text-teal-600 mb-2">Total Cash</h3>
+          <p class="text-xl font-bold text-teal-700">{{ rupiah(netCashForCashier) }}</p>
+          <p class="text-xs text-gray-600">Pendapatan Cash - Pengeluaran</p>
+        </div>
+        <div v-if="!isCashier" class="card text-center">
           <h3 class="text-sm font-semibold text-orange-600 mb-2">HPP</h3>
           <p class="text-xl font-bold text-orange-700">{{ rupiah(totals.cogs) }}</p>
           <p class="text-xs text-gray-600">Cost of Goods</p>
         </div>
-        <div class="card text-center">
+        <div v-if="!isCashier" class="card text-center">
           <h3 class="text-sm font-semibold text-green-600 mb-2">Laba Kotor</h3>
           <p class="text-xl font-bold text-green-700">{{ rupiah(totals.gross_profit) }}</p>
           <p class="text-xs text-gray-600">Gross Profit</p>
@@ -176,16 +200,12 @@
           <p class="text-xl font-bold text-red-700">{{ rupiah(totals.expenses) }}</p>
           <p class="text-xs text-gray-600">Operasional + Iklan</p>
         </div>
-        <div class="card text-center">
+        <div v-if="!isCashier" class="card text-center">
           <h3 class="text-sm font-semibold mb-2" :class="totals.net_profit >= 0 ? 'text-green-600' : 'text-red-600'">Laba Bersih</h3>
           <p class="text-xl font-bold" :class="totals.net_profit >= 0 ? 'text-green-700' : 'text-red-700'">{{ rupiah(totals.net_profit) }}</p>
           <p class="text-xs text-gray-600">{{ totals.net_profit >= 0 ? 'Profit' : 'Loss' }}</p>
         </div>
-        <div class="card text-center">
-          <h3 class="text-sm font-semibold text-purple-600 mb-2">Transaksi</h3>
-          <p class="text-xl font-bold text-purple-700">{{ sales.summary?.trx_count || 0 }}</p>
-          <p class="text-xs text-gray-600">Total Sales</p>
-        </div>
+        
       </div>
 
       <!-- Charts Section -->
@@ -281,6 +301,8 @@
                 <th class="text-left p-3 font-medium">Produk</th>
                 <th class="text-right p-3 font-medium">Qty</th>
                 <th class="text-right p-3 font-medium">Omzet</th>
+                <th v-if="!isCashier" class="text-right p-3 font-medium text-blue-600">HPP</th>
+                <th v-if="!isCashier" class="text-right p-3 font-medium text-green-600">Laba Kotor</th>
               </tr>
             </thead>
             <tbody>
@@ -291,6 +313,8 @@
                 </td>
                 <td class="p-3 text-right">{{ Number(product.qty || 0).toLocaleString('id-ID') }}</td>
                 <td class="p-3 text-right font-medium">{{ rupiah(product.gross) }}</td>
+                <td v-if="!isCashier" class="p-3 text-right text-blue-600">{{ rupiah(product.total_cogs || 0) }}</td>
+                <td v-if="!isCashier" class="p-3 text-right text-green-600 font-semibold">{{ rupiah((product.gross || 0) - (product.total_cogs || 0)) }}</td>
               </tr>
             </tbody>
           </table>
@@ -299,24 +323,216 @@
 
       <!-- Sales Trend Chart -->
       <div v-if="visibleSections.salesTrend && sales.by_date?.length" class="card">
-        <h3 class="card-title">📈 Tren Penjualan Harian</h3>
+        <h3 class="card-title">📈 Daftar Produk yang Terjual per Hari</h3>
         <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="text-left p-3 font-medium">Tanggal</th>
-                <th class="text-right p-3 font-medium">Transaksi</th>
-                <th class="text-right p-3 font-medium">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="day in sales.by_date" :key="day.date" class="border-t">
-                <td class="p-3">{{ formatDate(day.date) }}</td>
-                <td class="p-3 text-right">{{ day.trx_count }}</td>
-                <td class="p-3 text-right font-medium">{{ rupiah(day.total) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div v-for="day in sales.by_date" :key="day.date" class="mb-6 border-b pb-6 last:border-b-0 last:pb-0">
+            <!-- Date Header -->
+            <div class="flex items-center justify-between mb-3 pb-2 border-b-2 border-blue-200">
+              <h4 class="text-base font-semibold text-gray-800">{{ formatDate(day.date) }}</h4>
+              <div class="flex items-center gap-4 text-xs">
+                <span class="text-gray-600">{{ day.trx_count }} transaksi</span>
+                <template v-if="!isCashier">
+                  <span class="px-2 py-1 bg-green-50 text-green-700 rounded font-medium">Omzet: {{ rupiah(day.total) }}</span>
+                  <span class="px-2 py-1 bg-blue-50 text-blue-700 rounded font-medium">HPP: {{ rupiah(day.total_cogs || 0) }}</span>
+                  <span class="px-2 py-1 bg-emerald-50 text-emerald-700 rounded font-semibold">Laba: {{ rupiah((day.total || 0) - (day.total_cogs || 0)) }}</span>
+                </template>
+              </div>
+            </div>
+            
+            <!-- Product List -->
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2 font-medium">Produk</th>
+                  <th class="text-left p-2 font-medium">Kategori</th>
+                  <th class="text-right p-2 font-medium">Qty</th>
+                  <th class="text-right p-2 font-medium">Omzet</th>
+                  <th v-if="!isCashier" class="text-right p-2 font-medium text-blue-600">HPP</th>
+                  <th v-if="!isCashier" class="text-right p-2 font-medium text-green-600">Laba Kotor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="product in getProductsByDate(day.date)" 
+                  :key="product.product_id"
+                  class="border-t hover:bg-gray-50"
+                >
+                  <td class="p-2">
+                    <span class="font-medium">{{ product.product?.name || 'N/A' }}</span>
+                    <span class="text-xs text-gray-500 ml-1">({{ product.product?.unit || '' }})</span>
+                  </td>
+                  <td class="p-2">{{ product.product?.category?.name || '-' }}</td>
+                  <td class="text-right p-2">{{ Number(product.total_qty || 0).toLocaleString('id-ID') }}</td>
+                  <td class="text-right p-2 font-medium">{{ rupiah(product.total_revenue || 0) }}</td>
+                  <td v-if="!isCashier" class="text-right p-2 text-blue-600">{{ rupiah(product.total_cogs || 0) }}</td>
+                  <td v-if="!isCashier" class="text-right p-2 text-green-600 font-semibold">
+                    {{ rupiah((product.total_revenue || 0) - (product.total_cogs || 0)) }}
+                  </td>
+                </tr>
+                <tr v-if="!getProductsByDate(day.date).length">
+                  <td :colspan="isCashier ? 4 : 6" class="text-center text-gray-500 py-3">Tidak ada produk terjual</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Report (CSV Format View) -->
+      <div v-if="showDetailedReport" class="card mt-8">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="card-title">📋 Detail Laporan (Format CSV)</h3>
+          <button 
+            @click="showDetailedReport = false" 
+            class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          >
+            ✕ Tutup
+          </button>
+        </div>
+
+        <!-- Sales Transactions -->
+        <div v-if="detailed_data?.sales?.length" class="mb-6">
+          <h4 class="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b">💰 Transaksi Penjualan</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2">Tanggal</th>
+                  <th class="text-left p-2">Metode</th>
+                  <th class="text-left p-2">Member</th>
+                  <th class="text-right p-2">Subtotal</th>
+                  <th class="text-right p-2">Diskon</th>
+                  <th v-if="!isCashier" class="text-right p-2">HPP</th>
+                  <th class="text-right p-2 font-medium">Total</th>
+                  <th class="text-right p-2">Persentase</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="sale in detailed_data.sales" :key="sale.id" class="border-t hover:bg-gray-50">
+                  <td class="p-2">{{ formatDateTime(sale.date_time) }}</td>
+                  <td class="p-2">{{ sale.payment_type }}</td>
+                  <td class="p-2">{{ sale.member?.full_name || 'Guest' }}</td>
+                  <td class="text-right p-2">{{ rupiah(sale.subtotal_amount) }}</td>
+                  <td class="text-right p-2 text-red-600">- {{ rupiah(sale.discount_amount) }}</td>
+                  <td v-if="!isCashier" class="text-right p-2 text-blue-600">{{ rupiah(sale.cogs_amount) }}</td>
+                  <td class="text-right p-2 font-semibold">{{ rupiah(sale.total_amount) }}</td>
+                  <td class="text-right p-2 text-gray-600">{{ getPercentage(sale.total_amount, totals.revenue) }}%</td>
+                </tr>
+                <tr class="bg-gray-100 font-semibold">
+                  <td :colspan="isCashier ? 5 : 6" class="p-2">Total Penjualan</td>
+                  <td class="text-right p-2">{{ rupiah(totals.revenue) }}</td>
+                  <td class="text-right p-2">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Expenses -->
+        <div v-if="detailed_data?.expenses?.length" class="mb-6">
+          <h4 class="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b">💸 Pengeluaran Operasional</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2">Tanggal</th>
+                  <th class="text-left p-2">Deskripsi</th>
+                  <th class="text-right p-2">Jumlah</th>
+                  <th class="text-right p-2">Persentase</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="expense in detailed_data.expenses" :key="expense.id" class="border-t hover:bg-gray-50">
+                  <td class="p-2">{{ formatDate(expense.date) }}</td>
+                  <td class="p-2">{{ expense.description }}</td>
+                  <td class="text-right p-2 font-medium text-red-600">{{ rupiah(expense.amount) }}</td>
+                  <td class="text-right p-2 text-gray-600">{{ getPercentage(expense.amount, totals.expenses) }}%</td>
+                </tr>
+                <tr class="bg-gray-100 font-semibold">
+                  <td colspan="2" class="p-2">Total Pengeluaran</td>
+                  <td class="text-right p-2 text-red-600">{{ rupiah(totals.expenses) }}</td>
+                  <td class="text-right p-2">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ads -->
+        <div v-if="detailed_data?.ads?.length" class="mb-6">
+          <h4 class="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b">📢 Pengeluaran Iklan</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2">Tanggal</th>
+                  <th class="text-left p-2">Jenis</th>
+                  <th class="text-left p-2">Deskripsi</th>
+                  <th class="text-right p-2">Jumlah</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="ad in detailed_data.ads" :key="ad.id" class="border-t hover:bg-gray-50">
+                  <td class="p-2">{{ formatDate(ad.date) }}</td>
+                  <td class="p-2">{{ ad.type }}</td>
+                  <td class="p-2">{{ ad.description }}</td>
+                  <td class="text-right p-2 font-medium text-red-600">{{ rupiah(ad.amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Facilities -->
+        <div v-if="detailed_data?.facilities?.length" class="mb-6">
+          <h4 class="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b">🏢 Pendapatan Fasilitas</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2">Tanggal</th>
+                  <th class="text-left p-2">Jenis</th>
+                  <th class="text-left p-2">Deskripsi</th>
+                  <th class="text-right p-2">Jumlah</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="facility in detailed_data.facilities" :key="facility.id" class="border-t hover:bg-gray-50">
+                  <td class="p-2">{{ formatDate(facility.date) }}</td>
+                  <td class="p-2">{{ facility.type }}</td>
+                  <td class="p-2">{{ facility.description }}</td>
+                  <td class="text-right p-2 font-medium text-green-600">{{ rupiah(facility.amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Memberships -->
+        <div v-if="detailed_data?.memberships?.length" class="mb-6">
+          <h4 class="text-lg font-semibold text-gray-800 mb-3 pb-2 border-b">👥 Pendapatan Membership</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-2">Tanggal</th>
+                  <th class="text-left p-2">Member</th>
+                  <th class="text-left p-2">Tipe</th>
+                  <th class="text-left p-2">Metode</th>
+                  <th class="text-right p-2">Jumlah</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="membership in detailed_data.memberships" :key="membership.id" class="border-t hover:bg-gray-50">
+                  <td class="p-2">{{ formatDate(membership.date) }}</td>
+                  <td class="p-2">{{ membership.member_name }}</td>
+                  <td class="p-2">{{ membership.type }}</td>
+                  <td class="p-2">{{ membership.payment_type }}</td>
+                  <td class="text-right p-2 font-medium text-green-600">{{ rupiah(membership.amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -325,7 +541,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { formatPrice } from '@/composables/usePriceFormatter'
 
@@ -337,11 +553,41 @@ const props = defineProps({
   facilities: Object,
   memberships: Object,
   top_products: Array,
+  detailed_data: Object,
   totals: Object,
 })
 
 const localDateFrom = ref(props.filters.date_from)
 const localDateTo = ref(props.filters.date_to)
+const showDetailedReport = ref(false)
+
+// Role-based guard & payment breakdown
+const page = usePage()
+const isCashier = computed(() => page.props.auth?.roles?.includes('Kasir'))
+
+const totalCash = computed(() => {
+  const salesCash = (props.sales?.by_payment || []).find(p => p.payment_type === 'Cash')?.total || 0
+  const membershipCash = (props.memberships?.by_payment || []).find(p => p.payment_type === 'Cash')?.total || 0
+  return (salesCash || 0) + (membershipCash || 0)
+})
+
+const totalQr = computed(() => {
+  const salesQr = (props.sales?.by_payment || []).find(p => p.payment_type === 'QR')?.total || 0
+  const membershipQr = (props.memberships?.by_payment || []).find(p => p.payment_type === 'QR')?.total || 0
+  return (salesQr || 0) + (membershipQr || 0)
+})
+
+const totalTransfer = computed(() => {
+  const salesTransfer = (props.sales?.by_payment || []).find(p => p.payment_type === 'Transfer')?.total || 0
+  const membershipTransfer = (props.memberships?.by_payment || []).find(p => p.payment_type === 'Transfer')?.total || 0
+  return (salesTransfer || 0) + (membershipTransfer || 0)
+})
+
+// Net cash for cashier view: Pendapatan Cash - Pengeluaran
+const netCashForCashier = computed(() => {
+  const expenses = props.totals?.expenses || 0
+  return (totalCash.value || 0) - (expenses || 0)
+})
 
 // Section visibility state
 const visibleSections = ref({
@@ -456,6 +702,21 @@ function formatDate(dateStr) {
   })
 }
 
+function formatDateTime(dateTime) {
+  return new Date(dateTime).toLocaleString('id-ID', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function getPercentage(value, total) {
+  if (!total || total === 0) return 0
+  return ((value / total) * 100).toFixed(2)
+}
+
 function reload() {
   router.get(route('reports.comprehensive'), {
     date_from: localDateFrom.value,
@@ -468,6 +729,27 @@ function reload() {
 
 function print() {
   window.print()
+}
+
+// Helper function to get products by date
+function getProductsByDate(date) {
+  if (!props.sales.product_by_date) return []
+  const items = props.sales.product_by_date
+    .filter(item => item.date === date)
+    .slice()
+  // Sort by category name (asc), then product name (asc)
+  items.sort((a, b) => {
+    const catA = (a.product?.category?.name || '').toLowerCase()
+    const catB = (b.product?.category?.name || '').toLowerCase()
+    if (catA < catB) return -1
+    if (catA > catB) return 1
+    const nameA = (a.product?.name || '').toLowerCase()
+    const nameB = (b.product?.name || '').toLowerCase()
+    if (nameA < nameB) return -1
+    if (nameA > nameB) return 1
+    return 0
+  })
+  return items
 }
 </script>
 

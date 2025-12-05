@@ -22,7 +22,8 @@ class SalesTransaction extends Model
         'paid_amount',
         'change_amount',
         'notes',
-        'date_time'
+        'date_time',
+        'created_by'
     ];
     
     protected $casts = [
@@ -43,5 +44,10 @@ class SalesTransaction extends Model
     public function member()
     {
         return $this->belongsTo(Member::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

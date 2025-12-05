@@ -57,7 +57,7 @@ class TransactionController extends Controller
     public function create()
     {
         return Inertia::render('Transactions/Create', [
-            'products' => Product::orderBy('name')->get(['id','name','price','stock','unit']),
+            'products' => Product::select('id','name','price','stock','unit')->orderBy('name')->get(),
             'members'  => Member::orderBy('full_name')->get(['id','full_name']),
         ]);
     }
@@ -148,6 +148,7 @@ class TransactionController extends Controller
                 'change_amount'   => $change,
                 'notes'           => $request->notes,
                 'date_time'       => now(),
+                'created_by'      => auth()->id(),
             ]);
 
             // Calculate total COGS for the transaction

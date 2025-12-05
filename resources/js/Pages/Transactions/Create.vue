@@ -298,13 +298,21 @@ function onProductSelect(index) {
   const item = form.items[index]
   if (item.product_id) {
     const product = props.products.find(p => p.id === item.product_id)
-    if (product) {
+    console.log('Product selected:', { id: product?.id, name: product?.name, price: product?.price })
+    if (product && product.price) {
       // Set product name in search field
       item.productSearch = product.name
-      // Set default price from product
-      item.price_each = product.price
+      // Set default price from product - ensure it's a proper number
+      const price = parseFloat(product.price)
+      if (!isNaN(price)) {
+        item.price_each = price
+        console.log(`✓ Set price_each to ${price} for ${product.name}`)
+        console.log('Item after update:', form.items[index])
+      }
     }
   }
+  // Force reactivity update by creating new array
+  form.items = [...form.items]
 }
 
 const subtotal = computed(() =>
@@ -344,13 +352,17 @@ function formatPriceInput(value) {
 
 function parsePrice(value) {
   if (!value) return 0
-  const cleaned = value.replace(/\./g, '')
+  // Remove all dots (.) and replace comma (,) with dot for decimal
+  const cleaned = value.toString().replace(/\./g, '').replace(',', '.')
   const num = parseFloat(cleaned)
   return isNaN(num) ? 0 : num
 }
 
 function updatePrice(index, value) {
-  form.items[index].price_each = parsePrice(value)
+  const parsedValue = parsePrice(value)
+  form.items[index].price_each = parsedValue
+  // Force update to trigger reactive change
+  form.items = [...form.items]
 }
 
 function updateDiscountValue(value) {
@@ -370,13 +382,17 @@ function formatNumberInput(value) {
 
 function parseNumber(value) {
   if (!value) return 0
-  const cleaned = value.replace(/\./g, '')
+  // Remove all dots (.) and replace comma (,) with dot for decimal
+  const cleaned = value.toString().replace(/\./g, '').replace(',', '.')
   const num = parseFloat(cleaned)
   return isNaN(num) ? 0 : num
 }
 
 function updateQuantity(index, value) {
-  form.items[index].quantity = parseNumber(value)
+  const parsedValue = parseNumber(value)
+  form.items[index].quantity = parsedValue
+  // Force update to trigger reactive change
+  form.items = [...form.items]
 }
 
 function submit() {

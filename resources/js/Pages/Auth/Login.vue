@@ -44,20 +44,21 @@ const submit = () => {
 
       <!-- Form -->
       <form @submit.prevent="submit" class="mt-6 space-y-5">
-        <!-- Email -->
+        <!-- Email or Name -->
         <div>
           <label
             for="email"
             class="block text-sm font-medium text-gray-700"
-            >Email</label
+            >Email atau Nama</label
           >
           <input
             id="email"
             v-model="form.email"
-            type="email"
+            type="text"
             required
             autofocus
             autocomplete="username"
+            placeholder="Masukkan email atau nama"
             class="mt-1 w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none"
           />
           <p v-if="form.errors.email" class="text-red-500 text-sm mt-1">

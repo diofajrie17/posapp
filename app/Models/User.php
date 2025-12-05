@@ -44,4 +44,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Get the login identifier for this model.
+     * Allows authentication using both email and name.
+     */
+    public function getLoginAttribute()
+    {
+        return $this->email ?? $this->name;
+    }
 }

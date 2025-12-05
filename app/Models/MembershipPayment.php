@@ -65,5 +65,13 @@ class MembershipPayment extends Model
     {
         return $query->where('type', 'daily');
     }
+
+    /**
+     * Scope a query to only include renewal payments.
+     */
+    public function scopeRenewal($query)
+    {
+        return $query->where('type', 'renewal');
+    }
 }
 

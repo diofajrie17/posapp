@@ -12,7 +12,7 @@ class MemberController extends Controller
 {
     $this->middleware('permission:products.view')->only(['index','show']);
     $this->middleware('permission:products.create')->only(['create','store']);
-    $this->middleware('permission:products.update')->only(['edit','update']);
+    $this->middleware('permission:products.update')->only(['edit','update','renew','processRenewal']);
     $this->middleware('permission:products.delete')->only(['destroy']);
 }
 
@@ -159,6 +159,74 @@ class MemberController extends Controller
         $member->update($validated);
 
         return redirect()->route('members.index')->with('message', 'Member berhasil diupdate');
+    }
+
+    public function renew(Member $member)
+    {
+        // Exclude daily plans (duration_days = 1) from member renewal
+        $packages = \App\Models\MembershipPackage::active()
+            ->where('duration_days', '>', 1)
+            ->get();
+        
+        return Inertia::render('Members/Renew', [
+            'member' => $member->load('membershipPackage'),
+            'packages' => $packages
+        ]);
+    }
+
+    public function processRenewal(Request $request, Member $member)
+    {
+        $validated = $request->validate([
+            'membership_package_id' => 'required|exists:membership_packages,id',
+            'payment_type' => 'required|in:Cash,QR,Transfer',
+            'renewal_start_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $package = \App\Models\MembershipPackage::find($validated['membership_package_id']);
+
+        // Determine renewal start date
+        // If provided, use it; otherwise, extend from current membership_end or today if expired
+        $renewalStartDate = $validated['renewal_start_date'] 
+            ? \Carbon\Carbon::parse($validated['renewal_start_date'])
+            : null;
+
+        // If no start date provided, calculate from current membership_end or today
+        if (!$renewalStartDate) {
+            if ($member->membership_end && $member->membership_end->isFuture()) {
+                // Extend from current membership_end
+                $renewalStartDate = $member->membership_end->copy()->addDay();
+            } else {
+                // Start from today (member is expired or has no end date)
+                $renewalStartDate = now();
+            }
+        }
+
+        // Calculate new membership_end date
+        $newMembershipEnd = $renewalStartDate->copy()->addDays($package->duration_days);
+
+        // Update member's membership information
+        $member->update([
+            'membership_package_id' => $validated['membership_package_id'],
+            'membership_start' => $renewalStartDate->toDateString(),
+            'membership_end' => $newMembershipEnd->toDateString(),
+            'is_active' => true,
+        ]);
+
+        // Create membership payment record for renewal
+        \App\Models\MembershipPayment::create([
+            'member_id' => $member->id,
+            'membership_package_id' => $validated['membership_package_id'],
+            'customer_name' => $member->full_name,
+            'customer_phone' => $member->phone,
+            'type' => 'renewal',
+            'payment_type' => $validated['payment_type'],
+            'amount' => $package->price,
+            'date' => $renewalStartDate->toDateString(),
+            'notes' => $validated['notes'] ?? 'Pembayaran perpanjangan membership',
+        ]);
+
+        return redirect()->route('members.index')->with('message', 'Membership berhasil diperpanjang');
     }
 
     public function destroy(Member $member)
