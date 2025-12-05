@@ -4,11 +4,22 @@ namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
+use Illuminate\Auth\Access\AuthorizationException;
+use Inertia\Inertia;
 
 class Handler extends ExceptionHandler
 {
     /**
-     * The list of the inputs that are never flashed to the session on validation exceptions.
+     * A list of the exception types that are not reported.
+     *
+     * @var array<int, class-string<Throwable>>
+     */
+    protected $dontReport = [
+        // ... existing code ...
+    ];
+
+    /**
+     * A list of the inputs that are never flashed for validation exceptions.
      *
      * @var array<int, string>
      */
@@ -24,7 +35,25 @@ class Handler extends ExceptionHandler
     public function register(): void
     {
         $this->reportable(function (Throwable $e) {
-            //
+            // ... existing code ...
         });
+    }
+
+    public function render($request, Throwable $e)
+    {
+        // Handle authorization errors from spatie/permission middleware
+        if ($e instanceof AuthorizationException) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Akses ditolak.'], 403);
+            }
+
+            return Inertia::render('Errors/403', [
+                'message' => 'Anda tidak memiliki akses untuk fitur ini.'
+            ])->with('error', 'Anda tidak memiliki akses untuk fitur ini.')
+              ->toResponse($request)
+              ->setStatusCode(403);
+        }
+
+        return parent::render($request, $e);
     }
 }

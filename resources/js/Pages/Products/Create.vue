@@ -27,6 +27,22 @@
           </div>
         </div>
 
+        <!-- Kode Produk -->
+        <div>
+          <label for="product_code" class="block text-sm font-medium text-gray-700 mb-2">Kode Produk *</label>
+          <input
+            id="product_code"
+            v-model="form.product_code"
+            type="text"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+            placeholder="Masukkan kode produk"
+          />
+          <div v-if="form.errors.product_code" class="text-red-500 text-sm mt-1">
+            {{ form.errors.product_code }}
+          </div>
+        </div>
+
         <!-- Nama Produk -->
         <div>
           <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Nama Produk</label>
@@ -48,8 +64,10 @@
           <label for="stock" class="block text-sm font-medium text-gray-700 mb-2">Stok</label>
           <input
             id="stock"
-            v-model="form.stock"
-            type="number"
+            v-model="stockFormatter.displayValue.value"
+            @input="stockFormatter.handleInput"
+            type="text"
+            inputmode="numeric"
             required
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             placeholder="0"
@@ -59,31 +77,15 @@
           </div>
         </div>
 
-        <!-- Harga Modal -->
-        <div>
-          <label for="cost_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Modal</label>
-          <input
-            id="cost_price"
-            v-model="form.cost_price"
-            type="number"
-            step="0.01"
-            required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="0"
-          />
-          <div v-if="form.errors.cost_price" class="text-red-500 text-sm mt-1">
-            {{ form.errors.cost_price }}
-          </div>
-        </div>
-
         <!-- Harga -->
         <div>
           <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Harga Jual</label>
           <input
             id="price"
-            v-model="form.price"
-            type="number"
-            step="0.01"
+            v-model="priceFormatter.displayValue.value"
+            @input="priceFormatter.handleInput"
+            type="text"
+            inputmode="numeric"
             required
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             placeholder="0"
@@ -95,7 +97,9 @@
 
         <!-- Unit -->
         <div>
-          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">
+            Unit (Base Unit)
+          </label>
           <select
             id="unit_id"
             v-model="form.unit_id"
@@ -103,7 +107,7 @@
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             @change="onUnitChange"
           >
-            <option value="">Pilih Unit</option>
+            <option value="">Pilih Base Unit</option>
             <option 
               v-for="unit in units" 
               :key="unit.id" 
@@ -112,6 +116,9 @@
               {{ unit.name }} {{ unit.symbol ? '(' + unit.symbol + ')' : '' }}
             </option>
           </select>
+          <p class="text-xs text-gray-500 mt-1">
+            Produk harus menggunakan base unit. Derived unit hanya untuk pembelian.
+          </p>
           <div v-if="form.errors.unit_id" class="text-red-500 text-sm mt-1">
             {{ form.errors.unit_id }}
           </div>
@@ -210,8 +217,9 @@
 
 <script setup>
 import { Link, useForm } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { usePriceFormatter, useNumberFormatter } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   categories: Array,
@@ -235,20 +243,40 @@ const isBaseUnit = computed(() => {
 
 const form = useForm({
   name: '',
+  product_code: '',
   stock: 0,
   price: 0,
-  cost_price: 0,
   unit_id: '',
   unit_quantity: 1,
   base_unit_id: '',
   category_id: ''
 })
 
+// Price formatter
+const priceFormatter = usePriceFormatter(form.price)
+
+// Stock formatter (integer only)
+const stockFormatter = useNumberFormatter(form.stock, false)
+
+// Sync price value
+watch(() => priceFormatter.numericValue.value, (newValue) => {
+  form.price = newValue
+})
+
+// Sync stock value
+watch(() => stockFormatter.numericValue.value, (newValue) => {
+  form.stock = newValue
+})
+
 function onUnitChange() {
   // Reset unit configuration when unit changes
   if (isBaseUnit.value) {
-    form.base_unit_id = ''
+    // For base units, set base_unit_id to the same as unit_id
+    form.base_unit_id = form.unit_id
     form.unit_quantity = 1
+  } else {
+    // For derived units, clear base_unit_id so user can select
+    form.base_unit_id = ''
   }
 }
 

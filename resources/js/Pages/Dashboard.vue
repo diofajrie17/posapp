@@ -1,135 +1,187 @@
 <template>
   <AppLayout title="Dashboard">
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="p-5 rounded-xl shadow bg-gradient-to-r from-indigo-500 to-indigo-400 text-white">
-        <div class="text-sm opacity-80">Omzet Hari Ini</div>
-        <div class="text-2xl font-bold">{{ rupiah(summary.gross_total) }}</div>
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <!-- Member Aktif -->
+      <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="text-sm opacity-90 mb-2">Member Aktif</div>
+        <div class="text-3xl font-bold">{{ members.active }}</div>
+        <div class="text-sm opacity-80 mt-2">Total member saat ini</div>
       </div>
-      <div class="p-5 rounded-xl shadow bg-gradient-to-r from-green-500 to-green-400 text-white">
-        <div class="text-sm opacity-80">Transaksi</div>
-        <div class="text-2xl font-bold">{{ summary.transaction_count }}</div>
+
+      <!-- Member Expiring -->
+      <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="text-sm opacity-90 mb-2">Akan Expired</div>
+        <div class="text-3xl font-bold">{{ members.expiring_count }}</div>
+        <div class="text-sm opacity-80 mt-2">Dalam 7 hari ke depan</div>
       </div>
-      <div class="p-5 rounded-xl shadow bg-gradient-to-r from-pink-500 to-pink-400 text-white">
-        <div class="text-sm opacity-80">Pengeluaran</div>
-        <div class="text-2xl font-bold">{{ rupiah(summary.expense) }}</div>
-      </div>
-      <div class="p-5 rounded-xl shadow bg-gradient-to-r from-yellow-500 to-yellow-400 text-white">
-        <div class="text-sm opacity-80">Laba Bersih</div>
-        <div class="text-2xl font-bold">{{ rupiah(summary.net_profit) }}</div>
+
+      <!-- Check-in Hari Ini -->
+      <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="text-sm opacity-90 mb-2">Check-in Hari Ini</div>
+        <div class="text-3xl font-bold">{{ checkIns.length }}</div>
+        <div class="text-sm opacity-80 mt-2">Member yang datang</div>
       </div>
     </div>
 
-    <!-- Members -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div class="p-5 rounded-xl shadow bg-white hover:shadow-lg transition">
-        <div class="text-sm text-gray-500">Member Aktif</div>
-        <div class="text-2xl font-semibold text-indigo-600">{{ members.active }}</div>
-      </div>
-      <div class="p-5 rounded-xl shadow bg-white hover:shadow-lg transition">
-        <div class="text-sm text-gray-500">Expired H-5</div>
-        <div class="text-2xl font-semibold text-red-500">{{ members.expiringH5 }}</div>
+    <div class="grid grid-cols-1 gap-6">
+      <!-- Expiring Members & Check-ins -->
+      <div class="space-y-6">
+        <!-- Member yang Akan Expired -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-800">⏰ Member Akan Expired (7 Hari Ke Depan)</h2>
+            <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">
+              {{ members.expiring_count }} member
+            </span>
+          </div>
+          
+          <div v-if="members.expiring_list && members.expiring_list.length > 0" class="space-y-3 max-h-96 overflow-y-auto">
+            <div
+              v-for="member in members.expiring_list"
+              :key="member.id"
+              class="flex items-center justify-between p-4 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition"
+            >
+              <div class="flex-1">
+                <div class="font-medium text-gray-800">{{ member.full_name }}</div>
+                <div class="text-sm text-gray-600">{{ member.phone }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm text-orange-600 font-semibold">{{ formatDate(member.membership_end) }}</div>
+                <div class="text-xs text-gray-500">{{ daysUntilExpiration(member.membership_end) }} hari lagi</div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center py-8 text-gray-500">
+            Tidak ada member yang akan expired dalam 7 hari ke depan
+          </div>
+        </div>
+
+        <!-- Check-in Hari Ini -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-800">✅ Check-in Hari Ini</h2>
+            <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+              {{ checkIns.length }} member
+            </span>
+          </div>
+          
+          <div v-if="checkIns && checkIns.length > 0" class="space-y-3 max-h-96 overflow-y-auto">
+            <div
+              v-for="checkIn in checkIns"
+              :key="checkIn.id"
+              class="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition"
+            >
+              <div class="flex-1">
+                <div class="font-medium text-gray-800">
+                  <span v-if="checkIn.member">{{ checkIn.member.full_name }}</span>
+                  <span v-else>{{ checkIn.customer_name || 'Guest' }}</span>
+                </div>
+                <div class="text-sm text-gray-600">
+                  <span v-if="checkIn.member">{{ checkIn.member.phone }}</span>
+                  <span v-else>{{ checkIn.customer_phone || '-' }}</span>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-semibold text-green-600">{{ formatTime(checkIn.check_in_time) }}</div>
+                <div v-if="checkIn.check_out_time" class="text-xs text-gray-500">Out: {{ formatTime(checkIn.check_out_time) }}</div>
+                <div v-else class="text-xs text-gray-500">Masih di gym</div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center py-8 text-gray-500">
+            Belum ada check-in hari ini
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Payment Breakdown & Top Products -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div class="p-5 rounded-xl shadow bg-white">
-        <h2 class="font-semibold mb-3 text-gray-700">Metode Pembayaran (Hari Ini)</h2>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-100 text-gray-600">
-              <th class="px-3 py-2">Metode</th>
-              <th class="px-3 py-2">Jumlah Trx</th>
-              <th class="px-3 py-2">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in paymentBreakdown" :key="p.payment_method">
-              <td class="px-3 py-2 text-gray-700">{{ p.payment_method }}</td>
-              <td class="px-3 py-2 text-center">{{ p.count }}</td>
-              <td class="px-3 py-2 text-right">{{ rupiah(p.total) }}</td>
-            </tr>
-            <tr v-if="paymentBreakdown.length === 0">
-              <td colspan="3" class="px-3 py-4 text-center text-gray-400">Tidak ada transaksi</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Digital Clock -->
+    <div class="mt-8 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl shadow-2xl p-8 text-center">
+      <div class="text-white">
+        <div class="text-sm text-gray-400 mb-2 uppercase tracking-wider">Waktu Sekarang</div>
+        <div class="text-6xl font-mono font-bold" id="digitalClock">{{ currentTime }}</div>
+        <div class="text-lg text-gray-400 mt-2" id="digitalDate">{{ currentDate }}</div>
       </div>
-
-      <div class="p-5 rounded-xl shadow bg-white">
-        <h2 class="font-semibold mb-3 text-gray-700">Produk Terlaris (Hari Ini)</h2>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="bg-gray-100 text-gray-600">
-              <th class="px-3 py-2">Produk</th>
-              <th class="px-3 py-2">Qty</th>
-              <th class="px-3 py-2">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in topProducts" :key="p.product_id">
-              <td class="px-3 py-2 text-gray-700">{{ p.product_name }}</td>
-              <td class="px-3 py-2 text-center">{{ p.total_quantity }}</td>
-              <td class="px-3 py-2 text-right">{{ rupiah(p.total_revenue) }}</td>
-            </tr>
-            <tr v-if="topProducts.length === 0">
-              <td colspan="3" class="px-3 py-4 text-center text-gray-400">Tidak ada transaksi</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Recent Transactions -->
-    <div class="p-5 rounded-xl shadow bg-white">
-      <h2 class="font-semibold mb-3 text-gray-700">Transaksi Terbaru</h2>
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-gray-100 text-gray-600">
-            <th class="px-3 py-2">ID</th>
-            <th class="px-3 py-2">Waktu</th>
-            <th class="px-3 py-2">Member</th>
-            <th class="px-3 py-2">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in recentTransactions" :key="t.id">
-            <td class="px-3 py-2">#{{ t.id }}</td>
-            <td class="px-3 py-2">{{ formatDateTime(t.created_at) }}</td>
-            <td class="px-3 py-2">{{ t.member_name || '-' }}</td>
-            <td class="px-3 py-2 text-right">{{ rupiah(t.gross_total) }}</td>
-          </tr>
-          <tr v-if="recentTransactions.length === 0">
-            <td colspan="4" class="px-3 py-4 text-center text-gray-400">Tidak ada transaksi</td>
-          </tr>
-        </tbody>
-      </table>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   today: String,
   summary: Object,
   members: Object,
-  topProducts: Array,
-  recentTransactions: Array,
-  paymentBreakdown: Array,
-  currentRoute: String,
+  checkIns: Array,
+})
+
+const currentTime = ref('')
+const currentDate = ref('')
+let timeInterval = null
+
+function updateClock() {
+  const now = new Date()
+  const timeString = now.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+  // Replace dot with colon (Indonesia uses dot, but we want colon)
+  currentTime.value = timeString.replace(/\./g, ':')
+  currentDate.value = now.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+onMounted(() => {
+  updateClock()
+  timeInterval = setInterval(updateClock, 1000)
+})
+
+onUnmounted(() => {
+  if (timeInterval) {
+    clearInterval(timeInterval)
+  }
 })
 
 function rupiah(n) {
-  return 'Rp ' + Number(n || 0).toLocaleString('id-ID')
+  return 'Rp ' + formatPrice(n || 0)
 }
 
-function formatDateTime(s) {
-  if (!s) return '-'
-  return new Date(s).toLocaleString('id-ID', { hour12: false })
+function formatDate(date) {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
+}
+
+function formatTime(time) {
+  if (!time) return '-'
+  const timeString = new Date(time).toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  })
+  // Replace dot with colon (Indonesia uses dot, but we want colon)
+  return timeString.replace(/\./g, ':')
+}
+
+function daysUntilExpiration(endDate) {
+  if (!endDate) return null
+  const now = new Date()
+  const end = new Date(endDate)
+  const diffTime = end - now
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays > 0 ? diffDays : 0
 }
 
 const todayFormatted = computed(() => {
@@ -142,3 +194,29 @@ const todayFormatted = computed(() => {
   })
 })
 </script>
+
+<style scoped>
+/* Smooth transitions */
+.transition {
+  transition: all 0.3s ease;
+}
+
+/* Custom scrollbar untuk overflow */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+</style>

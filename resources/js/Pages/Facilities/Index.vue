@@ -233,6 +233,7 @@ import Card from '@/Components/Card.vue'
 import DataTable from '@/Components/DataTable.vue'
 import Button from '@/Components/Button.vue'
 import EmptyState from '@/Components/EmptyState.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   facilities: Object,
@@ -248,7 +249,7 @@ const localFilters = reactive({
 })
 
 function rupiah(n) {
-  return 'Rp ' + Number(n || 0).toLocaleString('id-ID')
+  return 'Rp ' + formatPrice(n || 0)
 }
 
 function formatDate(dateStr) {

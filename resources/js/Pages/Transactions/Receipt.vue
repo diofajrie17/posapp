@@ -1,12 +1,22 @@
 <template>
   <AppLayout title="Receipt Transaksi">
-    <div class="receipt-wrapper">
-      <div class="toolbar no-print mb-6">
-        <Link href="/transactions/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">← Kembali</Link>
-        <button @click="print" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">🖨️ Print</button>
-      </div>
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <PageHeader 
+        title="Receipt Transaksi" 
+        subtitle="Struk pembayaran"
+      >
+        <template #actions>
+          <Button href="/transactions/create" variant="secondary">
+            ← Kembali
+          </Button>
+          <Button @click="print" variant="primary">
+            🖨️ Print
+          </Button>
+        </template>
+      </PageHeader>
 
-      <div class="receipt bg-white border border-gray-300 rounded-lg p-6 shadow-lg max-w-sm mx-auto">
+      <div class="receipt-wrapper">
+        <div class="receipt bg-white border border-gray-300 rounded-lg p-6 shadow-lg max-w-sm mx-auto">
         <h2 class="title">{{ meta.store_name }}</h2>
         <div class="center small">{{ meta.address }}</div>
         <div class="line"></div>
@@ -58,14 +68,16 @@
         </div>
 
         <div class="center small thanks">Terima kasih & tetap sehat! 💪</div>
+        </div>
       </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/PageHeader.vue'
+import Button from '@/Components/Button.vue'
 
 defineProps({
   transaction: Object,
@@ -81,14 +93,10 @@ function rupiah(n){
 function print(){ window.print() }
 </script>
 
-<style>
-/* Toolbar non-print */
-.toolbar { display:flex; gap:.5rem; margin-bottom: .75rem; }
-.btn { background:#111827; color:#fff; padding:.35rem .6rem; border-radius:.375rem; }
-
+<style scoped>
 /* Ukuran thermal 58/80mm */
 @media print {
-  .no-print { display: none !important; }
+  :deep(.no-print) { display: none !important; }
   @page { size: 58mm auto; margin: 0; } /* ganti 80mm jika printer 80mm */
   body { margin:0; }
 }

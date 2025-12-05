@@ -7,6 +7,7 @@ use App\Models\SalesItem;
 use App\Models\Expense;
 use App\Models\Ad;
 use App\Models\Facility;
+use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,10 +18,7 @@ class ReportController extends Controller
 {
     public function __construct()
 {
-    $this->middleware('permission:products.view')->only(['index','show']);
-    $this->middleware('permission:products.create')->only(['create','store']);
-    $this->middleware('permission:products.update')->only(['edit','update']);
-    $this->middleware('permission:products.delete')->only(['destroy']);
+    $this->middleware('permission:reports.view');
 }
 
     public function dailySales(Request $request)
@@ -57,11 +55,14 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
-        // Daftar transaksi (untuk tabel)
-        $transactions = SalesTransaction::with('member:id,full_name')
+        // Daftar transaksi (untuk tabel) dengan items detail
+        $transactions = SalesTransaction::with([
+                'member:id,full_name',
+                'items.product:id,name,unit'
+            ])
             ->whereDate('date_time', $date)
             ->orderBy('date_time','desc')
-            ->get(['id','member_id','is_daily_guest','payment_type','total_amount','date_time']);
+            ->get(['id','member_id','is_daily_guest','payment_type','subtotal_amount','discount_amount','total_amount','cogs_amount','date_time']);
 
 
         $sumSubtotal = \App\Models\SalesTransaction::whereDate('date_time', $date)
@@ -69,6 +70,7 @@ class ReportController extends Controller
 
         $sumDiscount = \App\Models\SalesTransaction::whereDate('date_time', $date)
     ->sum('discount_amount');
+
         return Inertia::render('Reports/DailySales', [
             'date'         => $date,
             'summary'      => [
@@ -78,6 +80,8 @@ class ReportController extends Controller
             'byPayment'    => $byPayment,
             'topProducts'  => $topProducts,
             'transactions' => $transactions,
+            'sumSubtotal'  => $sumSubtotal,
+            'sumDiscount'  => $sumDiscount,
         ]);
     }
 
@@ -120,21 +124,40 @@ class ReportController extends Controller
         // Sales Transactions (Income)
         $salesSummary = SalesTransaction::selectRaw('
                 COUNT(*) as trx_count,
-                SUM(total_amount) as gross_total,
-                SUM(subtotal_amount) as subtotal_total,
-                SUM(discount_amount) as discount_total
+                COALESCE(SUM(total_amount), 0) as gross_total,
+                COALESCE(SUM(subtotal_amount), 0) as subtotal_total,
+                COALESCE(SUM(discount_amount), 0) as discount_total,
+                COALESCE(SUM(cogs_amount), 0) as total_cogs
             ')
             ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
             ->first();
 
+        // Get sales by date with product details
         $salesByDate = SalesTransaction::selectRaw('
                 DATE(date_time) as date,
                 COUNT(*) as trx_count,
-                SUM(total_amount) as total
+                SUM(total_amount) as total,
+                SUM(cogs_amount) as total_cogs
             ')
             ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
             ->groupBy(DB::raw('DATE(date_time)'))
             ->orderBy('date')
+            ->get();
+
+        // Get product sales per day with details (include product category)
+        $productSalesByDate = SalesItem::selectRaw('
+                DATE(sales_transactions.date_time) as date,
+                sales_items.product_id,
+                SUM(sales_items.quantity) as total_qty,
+                SUM(sales_items.quantity * sales_items.price_each) as total_revenue,
+                SUM(sales_items.quantity * sales_items.unit_cogs) as total_cogs
+            ')
+            ->join('sales_transactions', 'sales_items.transaction_id', '=', 'sales_transactions.id')
+            ->whereBetween(DB::raw('DATE(sales_transactions.date_time)'), [$dateFrom, $dateTo])
+            ->groupBy('date', 'sales_items.product_id')
+            ->with(['product:id,name,unit,category_id', 'product.category:id,name'])
+            ->orderBy('date')
+            ->orderByDesc('total_revenue')
             ->get();
 
         $salesByPayment = SalesTransaction::select('payment_type',
@@ -148,7 +171,7 @@ class ReportController extends Controller
         // Regular Expenses (Pengeluaran)
         $expensesSummary = Expense::selectRaw('
                 COUNT(*) as count,
-                SUM(amount) as total
+                COALESCE(SUM(amount), 0) as total
             ')
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->first();
@@ -166,7 +189,7 @@ class ReportController extends Controller
         // Ads Expenses (Separate Expense Category)
         $adsSummary = Ad::selectRaw('
                 COUNT(*) as count,
-                SUM(amount) as total
+                COALESCE(SUM(amount), 0) as total
             ')
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->first();
@@ -182,7 +205,7 @@ class ReportController extends Controller
         // Facility Income (Separate Income Category)
         $facilitySummary = Facility::selectRaw('
                 COUNT(*) as count,
-                SUM(amount) as total
+                COALESCE(SUM(amount), 0) as total
             ')
             ->whereBetween('date', [$dateFrom, $dateTo])
             ->first();
@@ -195,10 +218,35 @@ class ReportController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        // Top Products
+        // Membership Payments (Income from member registrations and daily plans)
+        $membershipSummary = \App\Models\MembershipPayment::selectRaw('
+                COUNT(*) as count,
+                COALESCE(SUM(amount), 0) as total
+            ')
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->first();
+
+        $membershipByType = \App\Models\MembershipPayment::select('type',
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(amount) as total'))
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->groupBy('type')
+            ->orderByDesc('total')
+            ->get();
+
+        $membershipByPayment = \App\Models\MembershipPayment::select('payment_type',
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(amount) as total'))
+            ->whereBetween('date', [$dateFrom, $dateTo])
+            ->groupBy('payment_type')
+            ->orderByDesc('total')
+            ->get();
+
+        // Top Products with HPP calculation
         $topProducts = SalesItem::select('product_id',
                 DB::raw('SUM(quantity) as qty'),
-                DB::raw('SUM(quantity * price_each) as gross'))
+                DB::raw('SUM(quantity * price_each) as gross'),
+                DB::raw('SUM(quantity * unit_cogs) as total_cogs'))
             ->whereHas('transaction', fn($q) => $q->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo]))
             ->with('product:id,name,unit')
             ->groupBy('product_id')
@@ -206,10 +254,46 @@ class ReportController extends Controller
             ->limit(10)
             ->get();
 
+        // Get detailed sales for CSV format view
+        $detailedSales = SalesTransaction::with('member:id,full_name')
+            ->whereBetween(DB::raw('DATE(date_time)'), [$dateFrom, $dateTo])
+            ->orderBy('date_time')
+            ->get();
+
+        // Get detailed expenses for CSV format view
+        $detailedExpenses = Expense::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
+        // Get detailed ads for CSV format view
+        $detailedAds = Ad::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
+        // Get detailed facilities for CSV format view
+        $detailedFacilities = Facility::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
+        // Get detailed memberships for CSV format view
+        $detailedMemberships = \App\Models\MembershipPayment::whereBetween('date', [$dateFrom, $dateTo])
+            ->orderBy('date')
+            ->get();
+
         // Calculate totals for profit/loss
-        $totalIncome = ($salesSummary->gross_total ?? 0) + ($facilitySummary->total ?? 0);
-        $totalExpenses = ($expensesSummary->total ?? 0) + ($adsSummary->total ?? 0);
-        $netProfit = $totalIncome - $totalExpenses;
+        $salesTotal = $salesSummary ? (float)($salesSummary->gross_total ?? 0) : 0;
+        $facilityTotal = $facilitySummary ? (float)($facilitySummary->total ?? 0) : 0;
+        $membershipTotal = $membershipSummary ? (float)($membershipSummary->total ?? 0) : 0;
+        
+        $totalRevenue = $salesTotal + $facilityTotal + $membershipTotal;
+        $totalCOGS = $salesSummary ? (float)($salesSummary->total_cogs ?? 0) : 0;
+        $grossProfit = $totalRevenue - $totalCOGS;
+        
+        $expensesTotal = $expensesSummary ? (float)($expensesSummary->total ?? 0) : 0;
+        $adsTotal = $adsSummary ? (float)($adsSummary->total ?? 0) : 0;
+        $totalExpenses = $expensesTotal + $adsTotal;
+        
+        $netProfit = $grossProfit - $totalExpenses;
 
         return Inertia::render('Reports/Comprehensive', [
             'filters' => [
@@ -219,6 +303,7 @@ class ReportController extends Controller
             'sales' => [
                 'summary' => $salesSummary,
                 'by_date' => $salesByDate,
+                'product_by_date' => $productSalesByDate,
                 'by_payment' => $salesByPayment,
             ],
             'expenses' => [
@@ -233,9 +318,23 @@ class ReportController extends Controller
                 'summary' => $facilitySummary,
                 'by_type' => $facilityByType,
             ],
+            'memberships' => [
+                'summary' => $membershipSummary,
+                'by_type' => $membershipByType,
+                'by_payment' => $membershipByPayment,
+            ],
             'top_products' => $topProducts,
+            'detailed_data' => [
+                'sales' => $detailedSales,
+                'expenses' => $detailedExpenses,
+                'ads' => $detailedAds,
+                'facilities' => $detailedFacilities,
+                'memberships' => $detailedMemberships,
+            ],
             'totals' => [
-                'income' => $totalIncome,
+                'revenue' => $totalRevenue,
+                'cogs' => $totalCOGS,
+                'gross_profit' => $grossProfit,
                 'expenses' => $totalExpenses,
                 'net_profit' => $netProfit,
             ],
@@ -375,5 +474,63 @@ class ReportController extends Controller
             
             fclose($out);
         }, 200, $headers);
+    }
+
+    public function attendance(Request $request)
+    {
+        $startDate = $request->query('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->query('end_date', now()->toDateString());
+
+        // Statistics
+        $totalAttendances = Attendance::dateRange($startDate, $endDate)->count();
+        $memberAttendances = Attendance::dateRange($startDate, $endDate)->memberType()->count();
+        $dailyAttendances = Attendance::dateRange($startDate, $endDate)->dailyType()->count();
+        
+        $days = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1;
+        $averagePerDay = $days > 0 ? round($totalAttendances / $days, 1) : 0;
+
+        // Daily breakdown
+        $dailyData = Attendance::selectRaw('
+                date,
+                COUNT(*) as count
+            ')
+            ->dateRange($startDate, $endDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // Top members by visit count
+        $topMembers = Attendance::select('member_id',
+                DB::raw('COUNT(*) as visit_count'))
+            ->memberType()
+            ->whereNotNull('member_id')
+            ->dateRange($startDate, $endDate)
+            ->with('member:id,full_name')
+            ->groupBy('member_id')
+            ->orderByDesc('visit_count')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'member_id' => $item->member_id,
+                    'member_name' => $item->member->full_name ?? '-',
+                    'visit_count' => $item->visit_count,
+                ];
+            });
+
+        return Inertia::render('Reports/Attendance', [
+            'stats' => [
+                'total' => $totalAttendances,
+                'members' => $memberAttendances,
+                'daily' => $dailyAttendances,
+                'average_per_day' => $averagePerDay,
+            ],
+            'dailyData' => $dailyData,
+            'topMembers' => $topMembers,
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ]
+        ]);
     }
 }

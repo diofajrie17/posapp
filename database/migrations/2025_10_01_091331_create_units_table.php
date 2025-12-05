@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name'); // e.g., 'pcs', 'box', 'kg', 'liter'
             $table->string('symbol')->nullable(); // e.g., 'pcs', 'box', 'kg', 'L'
+            $table->enum('type', ['piece', 'weight', 'volume', 'length'])->default('piece'); // unit category
             $table->unsignedBigInteger('parent_unit_id')->nullable(); // for unit conversion
             $table->decimal('conversion_factor', 10, 4)->default(1); // e.g., 1 box = 12 pcs (conversion_factor = 12)
             $table->boolean('is_base_unit')->default(false); // true for base units like 'pcs'

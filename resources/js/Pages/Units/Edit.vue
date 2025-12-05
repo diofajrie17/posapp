@@ -40,32 +40,24 @@
           </div>
         </div>
 
-        <!-- Tipe Unit -->
+        <!-- Kategori Unit -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-3">Tipe Unit</label>
-          <div class="space-y-3">
-            <label class="flex items-center">
-              <input
-                type="radio"
-                v-model="form.is_base_unit"
-                :value="true"
-                class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-              />
-              <span class="ml-2 text-gray-700">Base Unit (Unit dasar seperti pcs, gram, ml)</span>
-            </label>
-            <label class="flex items-center">
-              <input
-                type="radio"
-                v-model="form.is_base_unit"
-                :value="false"
-                class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-              />
-              <span class="ml-2 text-gray-700">Derived Unit (Unit turunan seperti box, dozen, kg)</span>
-            </label>
-          </div>
-          <div class="text-sm text-gray-600 mt-2">
-            <strong>Base Unit:</strong> Unit dasar yang tidak memerlukan konversi (seperti pcs, gram)<br>
-            <strong>Derived Unit:</strong> Unit yang memerlukan konfigurasi konversi saat membuat produk (seperti box, dozen)
+          <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+            Kategori Unit
+          </label>
+          <select
+            id="type"
+            v-model="form.type"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+          >
+            <option value="piece">Piece (pcs, box, carton, dozen, pack)</option>
+            <option value="weight">Weight (kg, gram, ton, pound)</option>
+            <option value="volume">Volume (liter, ml, gallon)</option>
+            <option value="length">Length (meter, cm, yard, inch)</option>
+          </select>
+          <div v-if="form.errors.type" class="text-red-500 text-sm mt-1">
+            {{ form.errors.type }}
           </div>
         </div>
 
@@ -132,6 +124,7 @@ const props = defineProps({
 const form = useForm({
   name: props.unit.name,
   symbol: props.unit.symbol || '',
+  type: props.unit.type || 'piece',
   is_base_unit: props.unit.is_base_unit
 })
 

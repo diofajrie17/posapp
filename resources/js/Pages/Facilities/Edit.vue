@@ -35,10 +35,10 @@
                     Jumlah <span class="text-red-500">*</span>
                   </label>
                   <input
-                    v-model="form.amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    v-model="amountFormatter.displayValue.value"
+                    @input="amountFormatter.handleInput"
+                    type="text"
+                    inputmode="numeric"
                     required
                     placeholder="0"
                     class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -151,9 +151,10 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { usePriceFormatter } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   facility: Object,
@@ -168,6 +169,14 @@ const form = reactive({
   customer_name: props.facility.customer_name || '',
   duration: props.facility.duration || '',
   notes: props.facility.notes || '',
+})
+
+// Amount formatter
+const amountFormatter = usePriceFormatter(form.amount)
+
+// Sync amount value
+watch(() => amountFormatter.numericValue.value, (newValue) => {
+  form.amount = newValue
 })
 
 const processing = ref(false)

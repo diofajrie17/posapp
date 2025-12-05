@@ -3,14 +3,7 @@
     <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8">
       <!-- Judul -->
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-800 mb-2">Edconst selectedBaseUnit = computed(() => {
-  if (!form.base_unit_id) return null
-  return props.baseUnits.find(unit => unit.id == form.base_unit_id)
-})
-
-const isBaseUnit = computed(() => {
-  return selectedUnit.value?.is_base_unit || false
-})roduk ✏️</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Edit Produk ✏️</h1>
         <p class="text-gray-600">Perbarui informasi produk sesuai kebutuhan</p>
       </div>
 
@@ -29,6 +22,22 @@ const isBaseUnit = computed(() => {
           />
           <div v-if="form.errors.name" class="text-red-500 text-sm mt-1">
             {{ form.errors.name }}
+          </div>
+        </div>
+
+        <!-- Kode Produk -->
+        <div>
+          <label for="product_code" class="block text-sm font-medium text-gray-700 mb-2">Kode Produk *</label>
+          <input
+            id="product_code"
+            v-model="form.product_code"
+            type="text"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+            placeholder="Masukkan kode produk"
+          />
+          <div v-if="form.errors.product_code" class="text-red-500 text-sm mt-1">
+            {{ form.errors.product_code }}
           </div>
         </div>
 
@@ -55,8 +64,10 @@ const isBaseUnit = computed(() => {
           <label for="stock" class="block text-sm font-medium text-gray-700 mb-2">Stok</label>
           <input
             id="stock"
-            v-model="form.stock"
-            type="number"
+            v-model="stockFormatter.displayValue.value"
+            @input="stockFormatter.handleInput"
+            type="text"
+            inputmode="numeric"
             required
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             placeholder="0"
@@ -66,31 +77,15 @@ const isBaseUnit = computed(() => {
           </div>
         </div>
 
-        <!-- Harga Modal -->
-        <div>
-          <label for="cost_price" class="block text-sm font-medium text-gray-700 mb-2">Harga Modal</label>
-          <input
-            id="cost_price"
-            v-model="form.cost_price"
-            type="number"
-            step="0.01"
-            required
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
-            placeholder="0"
-          />
-          <div v-if="form.errors.cost_price" class="text-red-500 text-sm mt-1">
-            {{ form.errors.cost_price }}
-          </div>
-        </div>
-
         <!-- Harga -->
         <div>
           <label for="price" class="block text-sm font-medium text-gray-700 mb-2">Harga Jual</label>
           <input
             id="price"
-            v-model="form.price"
-            type="number"
-            step="0.01"
+            v-model="priceFormatter.displayValue.value"
+            @input="priceFormatter.handleInput"
+            type="text"
+            inputmode="numeric"
             required
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             placeholder="0"
@@ -102,7 +97,9 @@ const isBaseUnit = computed(() => {
 
         <!-- Unit -->
         <div>
-          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+          <label for="unit_id" class="block text-sm font-medium text-gray-700 mb-2">
+            Unit (Base Unit)
+          </label>
           <select
             id="unit_id"
             v-model="form.unit_id"
@@ -110,7 +107,7 @@ const isBaseUnit = computed(() => {
             class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             @change="onUnitChange"
           >
-            <option value="">Pilih Unit</option>
+            <option value="">Pilih Base Unit</option>
             <option 
               v-for="unit in units" 
               :key="unit.id" 
@@ -119,6 +116,9 @@ const isBaseUnit = computed(() => {
               {{ unit.name }} {{ unit.symbol ? '(' + unit.symbol + ')' : '' }}
             </option>
           </select>
+          <p class="text-xs text-gray-500 mt-1">
+            Produk harus menggunakan base unit. Derived unit hanya untuk pembelian.
+          </p>
           <div v-if="form.errors.unit_id" class="text-red-500 text-sm mt-1">
             {{ form.errors.unit_id }}
           </div>
@@ -217,8 +217,9 @@ const isBaseUnit = computed(() => {
 
 <script setup>
 import { Link, useForm } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { usePriceFormatter, useNumberFormatter } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   product: Object,
@@ -237,22 +238,46 @@ const selectedBaseUnit = computed(() => {
   return props.baseUnits.find(unit => unit.id == form.base_unit_id)
 })
 
+const isBaseUnit = computed(() => {
+  return selectedUnit.value?.is_base_unit || false
+})
+
 const form = useForm({
   name: props.product.name,
+  product_code: props.product.product_code,
   stock: props.product.stock,
   price: props.product.price,
-  cost_price: props.product.cost_price || 0,
   unit_id: props.product.unit_id || '',
   unit_quantity: props.product.unit_quantity || 1,
   base_unit_id: props.product.base_unit_id || '',
   category_id: props.product.category_id || ''
 })
 
+// Price formatter
+const priceFormatter = usePriceFormatter(form.price)
+
+// Stock formatter (integer only)
+const stockFormatter = useNumberFormatter(form.stock, false)
+
+// Sync price value
+watch(() => priceFormatter.numericValue.value, (newValue) => {
+  form.price = newValue
+})
+
+// Sync stock value
+watch(() => stockFormatter.numericValue.value, (newValue) => {
+  form.stock = newValue
+})
+
 function onUnitChange() {
   // Reset unit configuration when unit changes
   if (isBaseUnit.value) {
-    form.base_unit_id = ''
+    // For base units, set base_unit_id to the same as unit_id
+    form.base_unit_id = form.unit_id
     form.unit_quantity = 1
+  } else {
+    // For derived units, clear base_unit_id so user can select
+    form.base_unit_id = ''
   }
 }
 

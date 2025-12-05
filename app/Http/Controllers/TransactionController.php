@@ -6,7 +6,8 @@ use App\Models\Product;
 use App\Models\Member;
 use App\Models\SalesItem;
 use App\Models\SalesTransaction;
-use App\Models\StockMovement;          // dari modul inventori
+use App\Models\StockMovement;
+use App\Models\InventoryBatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -56,7 +57,7 @@ class TransactionController extends Controller
     public function create()
     {
         return Inertia::render('Transactions/Create', [
-            'products' => Product::orderBy('name')->get(['id','name','price','stock','unit']),
+            'products' => Product::select('id','name','price','stock','unit')->orderBy('name')->get(),
             'members'  => Member::orderBy('full_name')->get(['id','full_name']),
         ]);
     }
@@ -147,33 +148,67 @@ class TransactionController extends Controller
                 'change_amount'   => $change,
                 'notes'           => $request->notes,
                 'date_time'       => now(),
+                'created_by'      => auth()->id(),
             ]);
 
-            // Simpan item + kurangi stok + catat movement OUT
+            // Calculate total COGS for the transaction
+            $totalCOGS = 0;
+
+            // Simpan item + kurangi stok + catat movement OUT + consume FIFO batches
             foreach ($request->items as $item) {
+                $quantityNeeded = $item['quantity'];
+                
+                // Consume FIFO batches and calculate COGS
+                $batches = InventoryBatch::getOldestBatches($item['product_id'], $quantityNeeded);
+                $remainingQty = $quantityNeeded;
+                $itemCOGS = 0;
+                
+                foreach ($batches as $batch) {
+                    if ($remainingQty <= 0) break;
+                    
+                    $consumedQty = min($batch->quantity_remaining, $remainingQty);
+                    $itemCOGS += $consumedQty * $batch->unit_cost;
+                    
+                    // Update batch
+                    $batch->quantity_remaining -= $consumedQty;
+                    if ($batch->quantity_remaining <= 0) {
+                        $batch->delete();
+                    } else {
+                        $batch->save();
+                    }
+                    
+                    $remainingQty -= $consumedQty;
+                }
+                
+                // Calculate unit COGS
+                $unitCOGS = $quantityNeeded > 0 ? $itemCOGS / $quantityNeeded : 0;
+                $totalCOGS += $itemCOGS;
+                
                 SalesItem::create([
                     'transaction_id' => $trx->id,
                     'product_id'     => $item['product_id'],
                     'quantity'       => $item['quantity'],
                     'price_each'     => $item['price_each'],
+                    'unit_cogs'      => $unitCOGS,
                 ]);
 
                 // Kurangi stok
                 Product::whereKey($item['product_id'])->decrement('stock', $item['quantity']);
 
                 // Movement OUT
-                if (class_exists(StockMovement::class)) {
-                    StockMovement::create([
-                        'product_id' => $item['product_id'],
-                        'direction'  => 'OUT',
-                        'quantity'   => $item['quantity'],
-                        'source'     => 'pos',
-                        'source_id'  => $trx->id,
-                        'note'       => 'POS sale',
-                        'moved_at'   => now(),
-                    ]);
-                }
+                StockMovement::create([
+                    'product_id' => $item['product_id'],
+                    'direction'  => 'OUT',
+                    'quantity'   => $item['quantity'],
+                    'source'     => 'pos',
+                    'source_id'  => $trx->id,
+                    'note'       => 'POS sale',
+                    'moved_at'   => now(),
+                ]);
             }
+            
+            // Update transaction with COGS
+            $trx->update(['cogs_amount' => $totalCOGS]);
 
             // Redirect langsung ke struk
             redirect()->route('transactions.receipt', $trx->id)->send();

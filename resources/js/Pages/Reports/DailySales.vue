@@ -99,41 +99,114 @@
 
       <!-- Detail Transaksi -->
       <div class="card mt-6">
-        <h2 class="card-title">Detail Transaksi</h2>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Waktu</th>
-              <th>Member</th>
-              <th>Metode</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="t in transactions" :key="t.id">
-              <td>{{ dt(t.date_time) }}</td>
-              <td>
-                <span v-if="t.member">{{ t.member.full_name }}</span>
-                <span v-else class="text-gray-500">Pengunjung Harian</span>
-              </td>
-              <td>{{ t.payment_type }}</td>
-              <td>{{ rupiah(t.total_amount) }}</td>
-            </tr>
-            <tr v-if="transactions.length === 0">
-              <td colspan="4" class="text-center text-gray-500 py-4">Tidak ada transaksi</td>
-            </tr>
-          </tbody>
-        </table>
+        <h2 class="card-title">Rincian Transaksi Harian</h2>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="w-12"></th>
+                <th>ID</th>
+                <th>Waktu</th>
+                <th>Member</th>
+                <th>Metode</th>
+                <th class="text-right">Subtotal</th>
+                <th class="text-right">Diskon</th>
+                <th class="text-right">Total</th>
+                <th class="text-right">HPP</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="t in transactions" :key="t.id">
+                <!-- Main Transaction Row -->
+                <tr class="hover:bg-gray-50 cursor-pointer" @click="toggleTransaction(t.id)">
+                  <td class="p-2">
+                    <svg 
+                      class="w-4 h-4 transition-transform" 
+                      :class="{ 'rotate-90': expandedTransactions.includes(t.id) }"
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </td>
+                  <td class="font-medium">{{ t.id }}</td>
+                  <td>{{ dt(t.date_time) }}</td>
+                  <td>
+                    <span v-if="t.member">{{ t.member.full_name }}</span>
+                    <span v-else class="text-gray-500">Pengunjung Harian</span>
+                  </td>
+                  <td>{{ t.payment_type }}</td>
+                  <td class="text-right">{{ rupiah(t.subtotal_amount) }}</td>
+                  <td class="text-right text-red-600">- {{ rupiah(t.discount_amount) }}</td>
+                  <td class="text-right font-semibold">{{ rupiah(t.total_amount) }}</td>
+                  <td class="text-right text-blue-600">{{ rupiah(t.cogs_amount) }}</td>
+                </tr>
+                
+                <!-- Expanded Items Row -->
+                <tr v-if="expandedTransactions.includes(t.id)" class="bg-gray-50">
+                  <td colspan="9" class="p-0">
+                    <div class="px-4 py-3">
+                      <h4 class="text-sm font-semibold text-gray-700 mb-2">Detail Item:</h4>
+                      <table class="w-full text-xs">
+                        <thead>
+                          <tr class="bg-white">
+                            <th class="text-left p-2 border-b">Produk</th>
+                            <th class="text-right p-2 border-b">Qty</th>
+                            <th class="text-right p-2 border-b">Harga Satuan</th>
+                            <th class="text-right p-2 border-b">HPP Satuan</th>
+                            <th class="text-right p-2 border-b">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="item in t.items" :key="item.id" class="border-b">
+                            <td class="p-2">
+                              <span class="font-medium">{{ item.product?.name }}</span>
+                              <span class="text-gray-500 text-xs ml-1">({{ item.product?.unit }})</span>
+                            </td>
+                            <td class="text-right p-2">{{ item.quantity }}</td>
+                            <td class="text-right p-2">{{ rupiah(item.price_each) }}</td>
+                            <td class="text-right p-2 text-blue-600">{{ rupiah(item.unit_cogs) }}</td>
+                            <td class="text-right p-2 font-medium">{{ rupiah(item.quantity * item.price_each) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <tr v-if="transactions.length === 0">
+                <td colspan="9" class="text-center text-gray-500 py-4">Tidak ada transaksi</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-        <!-- Subtotal -->
-        <div class="mt-4 text-sm border-t pt-3">
-          <div class="flex justify-between">
-            <span>Subtotal (hari itu)</span>
-            <strong>{{ rupiah(sumSubtotal) }}</strong>
+        <!-- Summary Footer -->
+        <div class="mt-4 pt-4 border-t grid grid-cols-2 gap-4">
+          <div class="text-sm">
+            <div class="flex justify-between mb-1">
+              <span class="text-gray-600">Subtotal:</span>
+              <strong class="text-gray-800">{{ rupiah(sumSubtotal) }}</strong>
+            </div>
+            <div class="flex justify-between mb-1">
+              <span class="text-gray-600">Total Diskon:</span>
+              <strong class="text-red-600">- {{ rupiah(sumDiscount) }}</strong>
+            </div>
+            <div class="flex justify-between pt-2 border-t">
+              <span class="font-semibold">Omzet Kotor:</span>
+              <strong class="text-green-600 text-lg">{{ rupiah(summary.gross_total) }}</strong>
+            </div>
           </div>
-          <div class="flex justify-between">
-            <span>Total Diskon</span>
-            <strong class="text-red-600">- {{ rupiah(sumDiscount) }}</strong>
+          <div class="text-sm">
+            <div class="flex justify-between pt-2">
+              <span class="text-gray-600">Total HPP:</span>
+              <strong class="text-blue-600">{{ rupiah(totalHPP) }}</strong>
+            </div>
+            <div class="flex justify-between pt-2 border-t">
+              <span class="font-semibold">Laba Kotor:</span>
+              <strong class="text-green-600 text-lg">{{ rupiah(grossProfit) }}</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -145,6 +218,7 @@
 import { router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { formatPrice } from '@/composables/usePriceFormatter'
 
 const props = defineProps({
   date: String,
@@ -157,6 +231,27 @@ const props = defineProps({
 })
 
 const localDate = ref(props.date)
+const expandedTransactions = ref([])
+
+// Toggle expand transaction
+function toggleTransaction(id) {
+  const index = expandedTransactions.value.indexOf(id)
+  if (index > -1) {
+    expandedTransactions.value.splice(index, 1)
+  } else {
+    expandedTransactions.value.push(id)
+  }
+}
+
+// Calculate total HPP
+const totalHPP = computed(() => {
+  return props.transactions.reduce((sum, t) => sum + (t.cogs_amount || 0), 0)
+})
+
+// Calculate gross profit
+const grossProfit = computed(() => {
+  return (props.summary.gross_total || 0) - totalHPP.value
+})
 
 const avgPerTrx = computed(() => {
   if (!props.summary.trx_count) return 0
@@ -164,7 +259,7 @@ const avgPerTrx = computed(() => {
 })
 
 function rupiah(n) {
-  return 'Rp ' + Number(n || 0).toLocaleString('id-ID')
+  return 'Rp ' + formatPrice(n || 0)
 }
 
 function dt(s) {

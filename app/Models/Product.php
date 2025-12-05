@@ -4,21 +4,34 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
+        'product_code',
         'stock',
         'price',
         'cost_price',
+        'average_cost',
+        'last_purchase_cost',
         'unit',
         'unit_id',
         'unit_quantity',
         'base_unit_id',
         'category_id'
+    ];
+
+    protected $casts = [
+        'stock' => 'integer',
+        'price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
+        'average_cost' => 'decimal:2',
+        'last_purchase_cost' => 'decimal:2',
+        'unit_quantity' => 'decimal:4',
     ];
 
     public function category()
@@ -34,6 +47,11 @@ class Product extends Model
     public function baseUnit()
     {
         return $this->belongsTo(Unit::class, 'base_unit_id');
+    }
+
+    public function inventoryBatches()
+    {
+        return $this->hasMany(InventoryBatch::class);
     }
 
     // Get unit display name with quantity info

@@ -12,10 +12,11 @@ class Kernel extends ConsoleKernel
      */
 protected function schedule(Schedule $schedule): void
 {
-    // generate notifikasi setiap pagi jam 09:00
-    $schedule->command('notify:expiring-members')->dailyAt('09:00');
-    $schedule->command('db:backup --compress --rotate-days=30')->dailyAt('02:00');
-
+    // Send membership expiration notifications every morning at 09:00
+    $schedule->command('members:send-expiration-notifications')->dailyAt('09:00');
+    
+    // Database backup
+    // $schedule->command('db:backup --compress --rotate-days=30')->dailyAt('02:00');
     }
 
     /**

@@ -40,6 +40,30 @@
           </div>
         </div>
 
+        <!-- Kategori Unit -->
+        <div>
+          <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+            Kategori Unit
+          </label>
+          <select
+            id="type"
+            v-model="form.type"
+            required
+            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+          >
+            <option value="piece">Piece (pcs, box, carton, dozen, pack)</option>
+            <option value="weight">Weight (kg, gram, ton, pound)</option>
+            <option value="volume">Volume (liter, ml, gallon)</option>
+            <option value="length">Length (meter, cm, yard, inch)</option>
+          </select>
+          <div v-if="form.errors.type" class="text-red-500 text-sm mt-1">
+            {{ form.errors.type }}
+          </div>
+          <div class="text-sm text-gray-600 mt-2">
+            Unit dengan kategori yang sama dapat digunakan bersama untuk satu produk
+          </div>
+        </div>
+
         <!-- Tipe Unit -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-3">Tipe Unit</label>
@@ -99,6 +123,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 const form = useForm({
   name: '',
   symbol: '',
+  type: 'piece',
   is_base_unit: true
 })
 

@@ -1,149 +1,257 @@
 <template>
   <AppLayout title="Transaksi Baru">
-    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
-      <!-- Header -->
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 class="text-3xl font-bold text-gray-800">🛒 Transaksi Kasir</h1>
-      </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <PageHeader 
+        title="Transaksi Kasir" 
+        subtitle="Catat transaksi penjualan baru"
+      >
+        <template #actions>
+          <Button href="/dashboard" variant="secondary">
+            Kembali
+          </Button>
+        </template>
+      </PageHeader>
 
-      <!-- Pelanggan -->
-      <div class="mb-6">
-        <label class="block text-sm font-medium mb-2 text-gray-700">Pelanggan</label>
-        <select v-model="form.member_id" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-          <option :value="null">Pengunjung Harian</option>
-          <option v-for="m in members" :key="m.id" :value="m.id">
-            {{ m.full_name }}
-          </option>
-        </select>
-        <div class="text-red-500 text-sm mt-1" v-if="form.errors.member_id">{{ form.errors.member_id }}</div>
-      </div>
-
-      <!-- Daftar Produk -->
-      <div class="mb-6">
-        <h2 class="text-lg font-semibold text-gray-700 mb-3">Item Produk</h2>
-        <div
-          v-for="(item, idx) in form.items"
-          :key="idx"
-          class="mb-3 border border-gray-200 p-4 rounded-lg bg-gray-50"
-        >
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <form @submit.prevent="submit">
+        <!-- Customer Info -->
+        <Card class="mb-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Informasi Pelanggan</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Produk</label>
-              <select v-model="item.product_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-                <option disabled value="">Pilih Produk</option>
-                <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
+              <InputLabel for="member_id" value="Pelanggan" />
+              <select 
+                id="member_id"
+                v-model="form.member_id" 
+                class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option :value="null">Pengunjung Harian</option>
+                <option v-for="m in members" :key="m.id" :value="m.id">
+                  {{ m.full_name }}
+                </option>
+              </select>
+              <InputError :message="form.errors.member_id" />
+            </div>
+            <div>
+              <InputLabel for="payment_type" value="Metode Pembayaran *" />
+              <select
+                id="payment_type"
+                v-model="form.payment_type"
+                class="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option>Cash</option>
+                <option>QR</option>
+                <option>Transfer</option>
               </select>
             </div>
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Jumlah</label>
-              <input v-model.number="item.quantity" type="number" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Qty" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Harga Satuan</label>
-              <input v-model.number="item.price_each" type="number" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Harga" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1 text-gray-700">Subtotal</label>
-              <div class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-right font-semibold text-gray-700">
-                {{ formatRupiah((item.quantity || 0) * (item.price_each || 0)) }}
+          </div>
+        </Card>
+
+        <!-- Items -->
+        <Card class="mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Item Produk</h3>
+            <Button type="button" @click="addItem" variant="primary" size="sm">
+              + Tambah Item
+            </Button>
+          </div>
+
+          <div class="space-y-4">
+            <div
+              v-for="(item, idx) in form.items"
+              :key="idx"
+              class="border border-gray-200 rounded-lg p-4 relative"
+            >
+              <button
+                v-if="form.items.length > 1"
+                type="button"
+                @click="removeItem(idx)"
+                class="absolute top-2 right-2 text-red-600 hover:text-red-800"
+              >
+                ✕
+              </button>
+
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="relative">
+                  <InputLabel :for="`product_${idx}`" value="Produk *" />
+                  <div class="relative">
+                    <input
+                      :id="`product_${idx}`"
+                      v-model="item.productSearch"
+                      @input="onProductSearch(idx)"
+                      @focus="item.showProductDropdown = true"
+                      @blur="() => setTimeout(() => item.showProductDropdown = false, 200)"
+                      type="text"
+                      class="w-full rounded-lg border-gray-300"
+                      placeholder="Cari produk..."
+                      autocomplete="off"
+                    />
+                    <div 
+                      v-if="item.showProductDropdown && getFilteredProducts(item.productSearch).length > 0"
+                      class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    >
+                      <div
+                        v-for="product in getFilteredProducts(item.productSearch)"
+                        :key="product.id"
+                        @click="selectProduct(idx, product)"
+                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      >
+                        <div class="font-medium">{{ product.name }}</div>
+                        <div class="text-xs text-gray-500">
+                          Stock: {{ product.stock }} | Harga: {{ formatRupiah(product.price) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <InputLabel :for="`quantity_${idx}`" value="Jumlah *" />
+                  <input
+                    :id="`quantity_${idx}`"
+                    :value="formatNumberInput(item.quantity)"
+                    @input="e => updateQuantity(idx, e.target.value)"
+                    type="text"
+                    inputmode="numeric"
+                    class="w-full rounded-lg border-gray-300"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <InputLabel :for="`price_${idx}`" value="Harga Satuan *" />
+                  <input
+                    :id="`price_${idx}`"
+                    :value="formatPriceInput(item.price_each)"
+                    @input="e => updatePrice(idx, e.target.value)"
+                    type="text"
+                    inputmode="numeric"
+                    class="w-full rounded-lg border-gray-300"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <InputLabel value="Subtotal" />
+                  <div class="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-right font-semibold text-gray-700">
+                    {{ formatRupiah((item.quantity || 0) * (item.price_each || 0)) }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="mt-3 flex justify-end" v-if="form.items.length > 1">
-            <button @click="form.items.splice(idx, 1)" type="button" class="px-3 py-1 text-red-600 hover:bg-red-50 rounded text-sm">
-              🗑️ Hapus
-            </button>
+        </Card>
+
+        <!-- Discount & Payment -->
+        <Card class="mb-6">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">Diskon & Pembayaran</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <InputLabel for="discount_type" value="Tipe Diskon" />
+              <select
+                id="discount_type"
+                v-model="form.discount_type"
+                class="w-full rounded-lg border-gray-300"
+              >
+                <option :value="null">Tidak ada</option>
+                <option value="fixed">Potongan (Rp)</option>
+                <option value="percent">Persen (%)</option>
+              </select>
+            </div>
+            <div>
+              <InputLabel for="discount_value" value="Nilai Diskon" />
+              <input
+                id="discount_value"
+                :value="formatPriceInput(form.discount_value)"
+                @input="e => updateDiscountValue(e.target.value)"
+                type="text"
+                inputmode="numeric"
+                class="w-full rounded-lg border-gray-300"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <InputLabel value="Potongan" />
+              <div class="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg border h-[42px]">
+                <strong class="text-gray-800">{{ formatRupiah(discountAmount) }}</strong>
+              </div>
+            </div>
           </div>
-        </div>
-        <button @click="addItem" type="button" class="px-3 py-2 border border-gray-400 text-gray-700 rounded-lg hover:bg-gray-100 transition text-sm">
-          + Tambah Item
-        </button>
-      </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <InputLabel for="paid_amount" value="Dibayar (Cash)" />
+              <input
+                id="paid_amount"
+                :value="formatPriceInput(form.paid_amount)"
+                @input="e => updatePaidAmount(e.target.value)"
+                type="text"
+                inputmode="numeric"
+                class="w-full rounded-lg border-gray-300"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <InputLabel value="Kembalian" />
+              <div class="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg border h-[42px]">
+                <strong class="text-gray-800">{{ formatRupiah(changeAmount) }}</strong>
+              </div>
+            </div>
+            <div>
+              <InputLabel for="notes" value="Catatan" />
+              <TextInput
+                id="notes"
+                v-model="form.notes"
+                type="text"
+                class="w-full"
+                placeholder="Opsional"
+              />
+            </div>
+          </div>
+        </Card>
 
-      <!-- Diskon -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Tipe Diskon</label>
-          <select v-model="form.discount_type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-            <option :value="null">Tidak ada</option>
-            <option value="fixed">Potongan (Rp)</option>
-            <option value="percent">Persen (%)</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Nilai Diskon</label>
-          <input v-model.number="form.discount_value" type="number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" />
-        </div>
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-          <span class="text-gray-700">Potongan:</span>
-          <strong class="text-gray-800">{{ formatRupiah(discountAmount) }}</strong>
-        </div>
-      </div>
+        <!-- Summary & Submit -->
+        <Card class="mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <span class="text-blue-700 font-medium">Subtotal:</span>
+              <strong class="text-blue-800 text-lg">{{ formatRupiah(subtotal) }}</strong>
+            </div>
+            <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+              <span class="text-green-700 font-medium">Total Bayar:</span>
+              <strong class="text-green-800 text-xl">{{ formatRupiah(total) }}</strong>
+            </div>
+          </div>
+        </Card>
 
-      <!-- Pembayaran -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Metode Pembayaran</label>
-          <select v-model="form.payment_type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
-            <option>Cash</option>
-            <option>QR</option>
-            <option>Transfer</option>
-          </select>
+        <!-- Submit Button -->
+        <div class="flex justify-end gap-3">
+          <Button type="button" href="/dashboard" variant="secondary">
+            Batal
+          </Button>
+          <Button type="submit" variant="primary" :disabled="form.processing">
+            <span v-if="form.processing">Menyimpan...</span>
+            <span v-else>💾 Simpan & Cetak</span>
+          </Button>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Dibayar (Cash)</label>
-          <input v-model.number="form.paid_amount" type="number" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" />
-        </div>
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-          <span class="text-gray-700">Kembalian:</span>
-          <strong class="text-gray-800">{{ formatRupiah(changeAmount) }}</strong>
-        </div>
-      </div>
-
-      <!-- Ringkasan -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <span class="text-blue-700">Subtotal:</span>
-          <strong class="text-blue-800">{{ formatRupiah(subtotal) }}</strong>
-        </div>
-        <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-          <span class="text-green-700">Total Bayar:</span>
-          <strong class="text-green-800 text-lg">{{ formatRupiah(total) }}</strong>
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-2 text-gray-700">Catatan</label>
-          <input v-model="form.notes" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200" placeholder="Opsional" />
-        </div>
-      </div>
-
-      <!-- Simpan -->
-      <button @click="submit" :disabled="form.processing" class="w-full bg-blue-600 text-white font-semibold px-6 py-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 text-lg">
-        <span v-if="form.processing">Menyimpan...</span>
-        <span v-else>💾 Simpan & Cetak</span>
-      </button>
-
-      <!-- Error -->
-      <div
-        v-if="Object.keys(form.errors).length"
-        class="mt-4 text-red-600 text-sm space-y-1 bg-red-50 p-3 rounded-lg border border-red-200"
-      >
-        <div v-for="(msg, key) in form.errors" :key="key">{{ msg }}</div>
-      </div>
+      </form>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { useForm, Link } from '@inertiajs/vue3'
+import { useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import PageHeader from '@/Components/PageHeader.vue'
+import Card from '@/Components/Card.vue'
+import Button from '@/Components/Button.vue'
+import InputLabel from '@/Components/InputLabel.vue'
+import TextInput from '@/Components/TextInput.vue'
+import InputError from '@/Components/InputError.vue'
 
-defineProps({ products: Array, members: Array })
+const props = defineProps({ products: Array, members: Array })
 
 const form = useForm({
   member_id: null,
   payment_type: 'Cash',
-  items: [{ product_id: '', quantity: 1, price_each: 0 }],
+  items: [{ product_id: '', productSearch: '', showProductDropdown: false, quantity: 1, price_each: 0 }],
   discount_type: null,
   discount_value: 0,
   paid_amount: null,
@@ -151,7 +259,60 @@ const form = useForm({
 })
 
 function addItem() {
-  form.items.push({ product_id: '', quantity: 1, price_each: 0 })
+  form.items.push({ product_id: '', productSearch: '', showProductDropdown: false, quantity: 1, price_each: 0 })
+}
+
+function removeItem(index) {
+  form.items.splice(index, 1)
+}
+
+const getFilteredProducts = (searchTerm) => {
+  if (!searchTerm || searchTerm.trim() === '') {
+    return props.products
+  }
+  
+  const term = searchTerm.toLowerCase()
+  return props.products.filter(product => 
+    product.name.toLowerCase().includes(term)
+  )
+}
+
+const selectProduct = (index, product) => {
+  const item = form.items[index]
+  item.product_id = product.id
+  item.productSearch = product.name
+  item.showProductDropdown = false
+  onProductSelect(index)
+}
+
+const onProductSearch = (index) => {
+  const item = form.items[index]
+  // If search is cleared, clear the product selection
+  if (!item.productSearch || item.productSearch.trim() === '') {
+    item.product_id = ''
+    item.price_each = 0
+  }
+}
+
+function onProductSelect(index) {
+  const item = form.items[index]
+  if (item.product_id) {
+    const product = props.products.find(p => p.id === item.product_id)
+    console.log('Product selected:', { id: product?.id, name: product?.name, price: product?.price })
+    if (product && product.price) {
+      // Set product name in search field
+      item.productSearch = product.name
+      // Set default price from product - ensure it's a proper number
+      const price = parseFloat(product.price)
+      if (!isNaN(price)) {
+        item.price_each = price
+        console.log(`✓ Set price_each to ${price} for ${product.name}`)
+        console.log('Item after update:', form.items[index])
+      }
+    }
+  }
+  // Force reactivity update by creating new array
+  form.items = [...form.items]
 }
 
 const subtotal = computed(() =>
@@ -180,6 +341,58 @@ function formatRupiah(value) {
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(value);
+}
+
+function formatPriceInput(value) {
+  if (!value || value === 0) return ''
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '')) : value
+  if (isNaN(num)) return ''
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function parsePrice(value) {
+  if (!value) return 0
+  // Remove all dots (.) and replace comma (,) with dot for decimal
+  const cleaned = value.toString().replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+function updatePrice(index, value) {
+  const parsedValue = parsePrice(value)
+  form.items[index].price_each = parsedValue
+  // Force update to trigger reactive change
+  form.items = [...form.items]
+}
+
+function updateDiscountValue(value) {
+  form.discount_value = parsePrice(value)
+}
+
+function updatePaidAmount(value) {
+  form.paid_amount = parsePrice(value)
+}
+
+function formatNumberInput(value) {
+  if (!value || value === 0) return ''
+  const num = typeof value === 'string' ? parseFloat(value.replace(/\./g, '')) : value
+  if (isNaN(num)) return ''
+  return Math.floor(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+function parseNumber(value) {
+  if (!value) return 0
+  // Remove all dots (.) and replace comma (,) with dot for decimal
+  const cleaned = value.toString().replace(/\./g, '').replace(',', '.')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? 0 : num
+}
+
+function updateQuantity(index, value) {
+  const parsedValue = parseNumber(value)
+  form.items[index].quantity = parsedValue
+  // Force update to trigger reactive change
+  form.items = [...form.items]
 }
 
 function submit() {

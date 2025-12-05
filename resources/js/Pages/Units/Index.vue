@@ -17,13 +17,14 @@
           <template #header>
             <th class="px-4 py-3 text-left font-semibold">Nama Unit</th>
             <th class="px-4 py-3 text-left font-semibold">Simbol</th>
+            <th class="px-4 py-3 text-left font-semibold">Kategori</th>
             <th class="px-4 py-3 text-left font-semibold">Tipe</th>
             <th class="px-4 py-3 text-left font-semibold">Jumlah Produk</th>
             <th class="px-4 py-3 text-center font-semibold">Aksi</th>
           </template>
 
           <tr v-if="units.length === 0">
-            <td colspan="5" class="p-0">
+            <td colspan="6" class="p-0">
               <EmptyState 
                 icon="⚖️" 
                 message="Belum ada unit" 
@@ -43,6 +44,11 @@
             <td class="px-4 py-3">
               <span class="px-2 py-1 text-xs rounded-full font-medium bg-gray-100 text-gray-700">
                 {{ unit.symbol || '-' }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <span :class="getTypeBadgeClass(unit.type)">
+                {{ getTypeLabel(unit.type) }}
               </span>
             </td>
             <td class="px-4 py-3">
@@ -100,5 +106,26 @@ function deleteUnit(id) {
   if (confirm('Yakin ingin menghapus unit ini?')) {
     router.delete(`/units/${id}`)
   }
+}
+
+// Helper functions for type display
+const getTypeLabel = (type) => {
+  const labels = {
+    piece: 'Piece',
+    weight: 'Weight',
+    volume: 'Volume',
+    length: 'Length'
+  }
+  return labels[type] || type
+}
+
+const getTypeBadgeClass = (type) => {
+  const classes = {
+    piece: 'bg-blue-100 text-blue-800',
+    weight: 'bg-green-100 text-green-800',
+    volume: 'bg-purple-100 text-purple-800',
+    length: 'bg-orange-100 text-orange-800'
+  }
+  return `px-2 py-1 text-xs font-medium rounded ${classes[type] || 'bg-gray-100 text-gray-800'}`
 }
 </script>
